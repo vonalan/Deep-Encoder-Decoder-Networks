@@ -329,6 +329,10 @@ def build_reduced_vgg16_deconvnet_graph(conv6_1):
                              trainable=True, name='biases')
         out = tf.nn.bias_add(conv, biases)
         pred_mattes = tf.nn.sigmoid(out)
+
+        tf.add_to_collection("pred_mattes", pred_mattes)
+        tf.summary.image('pred_mattes', pred_mattes, max_outputs=5)
+
         return pred_mattes, en_parameters
 
 def build_train_graph():
@@ -336,12 +340,11 @@ def build_train_graph():
 
 
 
-tf.add_to_collection("pred_mattes", pred_mattes)
+
 
 wl = tf.where(tf.equal(b_trimap,128),tf.fill([train_batch_size,image_size,image_size,1],1.),tf.fill([train_batch_size,image_size,image_size,1],0.))
 unknown_region_size = tf.reduce_sum(wl)
 
-tf.summary.image('pred_mattes',pred_mattes,max_outputs = 5)
 alpha_diff = tf.sqrt(tf.square(pred_mattes - GT_matte_batch)+ 1e-12)
 
 p_RGB = []
