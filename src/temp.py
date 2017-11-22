@@ -329,6 +329,12 @@ def build_reduced_vgg16_deconvnet_graph(conv6_1):
                              trainable=True, name='biases')
         out = tf.nn.bias_add(conv, biases)
         pred_mattes = tf.nn.sigmoid(out)
+        return pred_mattes, en_parameters
+
+def build_train_graph():
+    pass
+
+
 
 tf.add_to_collection("pred_mattes", pred_mattes)
 
