@@ -6,7 +6,7 @@ from scipy import misc
 os.environ['CUDA_VISIBLE_DEVICES']='0'
 
 image_size = 320
-train_batch_size = 1
+train_batch_size = 2
 max_epochs = 1000000
 hard_mode = False
 
@@ -25,15 +25,17 @@ dataset_alpha = 'train_data/alpha'
 dataset_eps = 'train_data/eps'
 dataset_BG = 'train_data/bg'
 
-paths_alpha,paths_eps,paths_BG = load_path(dataset_alpha,dataset_eps,dataset_BG,hard_mode = hard_mode)
-
-range_size = len(paths_alpha)
-print('range_size is %d' % range_size)
-#range_size/batch_size has to be int
-batchs_per_epoch = int(range_size/train_batch_size) 
-
-index_queue = tf.train.range_input_producer(range_size, num_epochs=None,shuffle=True, seed=None, capacity=32)
-index_dequeue_op = index_queue.dequeue_many(train_batch_size, 'index_dequeue')
+''''''
+# paths_alpha,paths_eps,paths_BG = load_path(dataset_alpha,dataset_eps,dataset_BG,hard_mode = hard_mode)
+#
+# range_size = len(paths_alpha)
+# print('range_size is %d' % range_size)
+# #range_size/batch_size has to be int
+# batchs_per_epoch = int(range_size/train_batch_size)
+#
+# index_queue = tf.train.range_input_producer(range_size, num_epochs=None,shuffle=True, seed=None, capacity=32)
+# index_dequeue_op = index_queue.dequeue_many(train_batch_size, 'index_dequeue')
+''''''
 
 image_batch = tf.placeholder(tf.float32, shape=(train_batch_size,image_size,image_size,3))
 raw_RGBs = tf.placeholder(tf.float32, shape=(train_batch_size,image_size,image_size,3))

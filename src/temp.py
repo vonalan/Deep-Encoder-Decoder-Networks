@@ -241,10 +241,11 @@ def build_vgg16_convnet_graph(b_input):
     return conv6_1, en_parameters
 
 def build_vgg16_deconvnet_graph(conv6_1):
+    # https://github.com/fabianbormann/Tensorflow-DeconvNet-Segmentation
     pass
 
 def build_reduced_vgg16_deconvnet_graph(conv6_1):
-    en_parameters = []
+    # https://github.com/vonalan/Deep-Image-Matting
 
     #deconv6
     with tf.variable_scope('deconv6') as scope:
@@ -320,6 +321,10 @@ def build_reduced_vgg16_deconvnet_graph(conv6_1):
                              trainable=True, name='biases')
         out = tf.nn.bias_add(conv, biases)
         deconv1_2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training), name='deconv1_2')
+
+    return deconv1_2
+
+def build_mini_fcn_graph(deconv1_2):
     #pred_alpha_matte
     with tf.variable_scope('pred_alpha') as scope:
         kernel = tf.Variable(tf.truncated_normal([5, 5, 64, 1], dtype=tf.float32,
@@ -333,17 +338,21 @@ def build_reduced_vgg16_deconvnet_graph(conv6_1):
         tf.add_to_collection("pred_mattes", pred_mattes)
         tf.summary.image('pred_mattes', pred_mattes, max_outputs=5)
 
-        return pred_mattes, en_parameters
+        return pred_mattes
 
 def build_train_graph():
-    pass
+    b_input = None
+    conv6_1, _ = build_vgg16_convnet_graph(b_input)
+    pred_mattes, _ = build_reduced_vgg16_deconvnet_graph(conv6_1)
 
-
-
-
-
-wl = tf.where(tf.equal(b_trimap,128),tf.fill([train_batch_size,image_size,image_size,1],1.),tf.fill([train_batch_size,image_size,image_size,1],0.))
+''''''
+# return a tensor which elements filled with 1.0 if corresponding
+# elements in b_trimap meets the condition or 0.0 otherwise
+wl = tf.where(tf.equal(b_trimap,128),
+              tf.fill([train_batch_size,image_size,image_size,1],1.),
+              tf.fill([train_batch_size,image_size,image_size,1],0.))
 unknown_region_size = tf.reduce_sum(wl)
+''''''
 
 alpha_diff = tf.sqrt(tf.square(pred_mattes - GT_matte_batch)+ 1e-12)
 
