@@ -1,74 +1,29 @@
-import tensorflow as tf
 import numpy as np
-from matting import load_path,load_data,load_alphamatting_data,load_validation_data,unpool
-import os
-from scipy import misc
-os.environ['CUDA_VISIBLE_DEVICES']='0'
+import tensorflow as tf
 
-image_size = 320
-# input_width = 320
-# input_height = 320
-# input_depth = 3
+def unpool(pool, ind, ksize=[1, 2, 2, 1], scope='unpool'):
+    # the train_batch_size must be appointed.
+    with tf.variable_scope(scope):
+        input_shape = pool.get_shape().as_list()
+        output_shape = (input_shape[0], input_shape[1] * ksize[1], input_shape[2] * ksize[2], input_shape[3])
 
-train_batch_size = None
-max_epochs = 1000000
-hard_mode = False
+        flat_input_size = np.prod(input_shape)
+        flat_output_shape = [output_shape[0], output_shape[1] * output_shape[2] * output_shape[3]]
 
-#checkpoint file path
-pretrained_model = False
-#pretrained_model = False
-test_dir = './alhpamatting'
-test_outdir = './test_predict'
-#validation_dir = '/data/gezheng/data-matting/new2/validation'
+        pool_ = tf.reshape(pool, [flat_input_size])
+        batch_range = tf.reshape(tf.range(output_shape[0], dtype=ind.dtype), shape=[input_shape[0], 1, 1, 1])
+        b = tf.ones_like(ind) * batch_range
+        b = tf.reshape(b, [flat_input_size, 1])
+        ind_ = tf.reshape(ind, [flat_input_size, 1])
+        ind_ = tf.concat([b, ind_], 1)
 
-#pretrained_vgg_model_path
-model_path = './vgg16_weights.npz'
-log_dir = 'matting_log'
+        ret = tf.scatter_nd(ind_, pool_, shape=flat_output_shape)
+        ret = tf.reshape(ret, output_shape)
+    return ret
 
-dataset_alpha = 'train_data/alpha'
-dataset_eps = 'train_data/eps'
-dataset_BG = 'train_data/bg'
+def build_reduced_vgg16_graph(raw_RGBs, training):
+    # tf.nn.max_pool_with_argmax support cpu only currently
 
-''''''
-# paths_alpha,paths_eps,paths_BG = load_path(dataset_alpha,dataset_eps,dataset_BG,hard_mode = hard_mode)
-#
-# range_size = len(paths_alpha)
-# print('range_size is %d' % range_size)
-# #range_size/batch_size has to be int
-# batchs_per_epoch = int(range_size/train_batch_size)
-#
-# index_queue = tf.train.range_input_producer(range_size, num_epochs=None,shuffle=True, seed=None, capacity=32)
-# index_dequeue_op = index_queue.dequeue_many(train_batch_size, 'index_dequeue')
-''''''
-
-image_batch = tf.placeholder(tf.float32, shape=(train_batch_size,image_size,image_size,3))
-raw_RGBs = tf.placeholder(tf.float32, shape=(train_batch_size,image_size,image_size,3))
-GT_matte_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_size,image_size,1))
-GT_trimap = tf.placeholder(tf.float32, shape = (train_batch_size,image_size,image_size,1))
-GTBG_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_size,image_size,3))
-GTFG_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_size,image_size,3))
-training = tf.placeholder(tf.bool)
-
-tf.add_to_collection('image_batch',image_batch)
-tf.add_to_collection('GT_trimap',GT_trimap)
-tf.add_to_collection('training',training)
-
-# en_parameters = []
-# pool_parameters = []
-
-b_RGB = tf.identity(image_batch,name = 'b_RGB')
-b_trimap = tf.identity(GT_trimap,name = 'b_trimap')
-b_GTmatte = tf.identity(GT_matte_batch,name = 'b_GTmatte')
-b_GTBG = tf.identity(GTBG_batch,name = 'b_GTBG')
-b_GTFG = tf.identity(GTFG_batch,name = 'b_GTFG')
-
-tf.summary.image('GT_matte_batch',b_GTmatte,max_outputs = 5)
-tf.summary.image('trimap',b_trimap,max_outputs = 5)
-tf.summary.image('raw_RGBs',raw_RGBs,max_outputs = 5)
-
-# b_input = tf.concat([b_RGB,b_trimap],3)
-
-def build_reduced_vgg16_graph(raw_RGBs):
     en_parameters = []
     pool_parameters = []
 
@@ -330,98 +285,5 @@ def build_reduced_vgg16_graph(raw_RGBs):
 
     return en_parameters, conv6_1, pred_RGBs
 
-# def build_train_graph():
-#     with tf.name_scope('reduced_vgg16') as scope:
-#         pass
-
-en_parameters, conv6_1, pred_RGBs = build_reduced_vgg16_graph(raw_RGBs)
-
-# tf.add_to_collection("pred_RGBs", pred_RGBs)
-# tf.summary.image('pred_RGB',pred_RGBs,max_outputs = 5)
-# c_diff = tf.sqrt(tf.square(pred_RGBs - raw_RGBs) + 1e-12)/255.0
-# loss = tf.reduce_sum(c_diff)
-# tf.summary.scalar('loss',loss)
-# global_step = tf.Variable(0,trainable=False)
-# train_op = tf.train.AdamOptimizer(learning_rate = 1e-5).minimize(loss,global_step = global_step)
-# saver = tf.train.Saver(tf.trainable_variables() , max_to_keep = 1)
-#
-# coord = tf.train.Coordinator()
-# summary_op = tf.summary.merge_all()
-# summary_writer = tf.summary.FileWriter(log_dir, tf.get_default_graph())
-#
-# gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction = 0.6)
-# with tf.Session(config=tf.ConfigProto(gpu_options = gpu_options)) as sess:
-#     sess.run(tf.global_variables_initializer())
-#     tf.train.start_queue_runners(coord=coord,sess=sess)
-#     batch_num = 0
-#     epoch_num = 0
-#
-#     #initialize all parameters in vgg16
-#     if not pretrained_model:
-#         weights = np.load(model_path)
-#         keys = sorted(weights.keys())
-#         for i, k in enumerate(keys):
-#             if i == 28:
-#                 break
-#             if k == 'conv1_1_W':
-#                 sess.run(en_parameters[i].assign(np.concatenate([weights[k],np.zeros([3,3,1,64])],axis = 2)))
-#             else:
-#                 if k=='fc6_W':
-#                     tmp = np.reshape(weights[k],(7,7,512,4096))
-#                     sess.run(en_parameters[i].assign(tmp))
-#                 else:
-#                     sess.run(en_parameters[i].assign(weights[k]))
-#         print('finish loading vgg16 model')
-#     else:
-#         print('Restoring pretrained model...')
-#         saver.restore(sess,tf.train.latest_checkpoint('./model'))
-#     sess.graph.finalize()
-#
-#     while epoch_num < max_epochs:
-#         while batch_num < batchs_per_epoch:
-#             batch_index = sess.run(index_dequeue_op)
-#
-#             batch_alpha_paths = paths_alpha[batch_index]
-#             batch_eps_paths = paths_eps[batch_index]
-#             batch_BG_paths = paths_BG[batch_index]
-#             batch_RGBs,batch_trimaps,batch_alphas,batch_BGs,batch_FGs,RGBs_with_mean = load_data(batch_alpha_paths,batch_eps_paths,batch_BG_paths)
-#
-#             feed = {image_batch:batch_RGBs, GT_matte_batch:batch_alphas,GT_trimap:batch_trimaps, GTBG_batch:batch_BGs, GTFG_batch:batch_FGs,raw_RGBs:RGBs_with_mean,training:True}
-#
-#             _,loss,summary_str,step= sess.run([train_op,loss,summary_op,global_step],feed_dict = feed)
-#             print('epoch %d   batch %d   loss is %f' %(epoch_num,batch_num,loss))
-#
-#             if step%200 == 0:
-#                 print('saving model......')
-#                 saver.save(sess,'./model/model.ckpt',global_step = step, write_meta_graph = False)
-#
-#                 print('test on validation data...')
-#                 test_RGBs,test_trimaps,test_alphas,all_shape,image_paths,trimap_size= load_alphamatting_data(test_dir)
-#                 vali_diff = []
-#
-#                 for i in range(len(test_RGBs)):
-#                     test_RGB = np.expand_dims(test_RGBs[i],0)
-#                     test_trimap = np.expand_dims(test_trimaps[i],0)
-#                     test_alpha = test_alphas[i]
-#                     shape_i = all_shape[i]
-#                     image_path = image_paths[i]
-#
-#                     feed = {image_batch:test_RGB,GT_trimap:test_trimap,training:False}
-#                     test_out = sess.run(pred_final,feed_dict = feed)
-#
-#                     i_out = misc.imresize(test_out[0,:,:,0],shape_i)
-#                     vali_diff.append(np.sum(np.abs(i_out/255.0-test_alpha))/trimap_size[i])
-#                     misc.imsave(os.path.join(test_outdir,image_path),i_out)
-#
-#                 vali_loss = np.mean(vali_diff)
-#                 print('validation loss is '+ str(vali_loss))
-#                 validation_summary = tf.Summary()
-#                 validation_summary.value.add(tag='validation_loss',simple_value = vali_loss)
-#                 summary_writer.add_summary(validation_summary,step)
-#
-#             summary_writer.add_summary(summary_str,global_step = step)
-#             batch_num += 1
-#         batch_num = 0
-#         epoch_num += 1
-
-
+def build_vgg16_graph(raw_RGBs):
+    pass
