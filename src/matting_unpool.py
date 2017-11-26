@@ -26,15 +26,15 @@ dataset_eps = 'train_data/eps'
 dataset_BG = 'train_data/bg'
 
 ''''''
-# paths_alpha,paths_eps,paths_BG = load_path(dataset_alpha,dataset_eps,dataset_BG,hard_mode = hard_mode)
-#
-# range_size = len(paths_alpha)
-# print('range_size is %d' % range_size)
-# #range_size/batch_size has to be int
-# batchs_per_epoch = int(range_size/train_batch_size)
-#
-# index_queue = tf.train.range_input_producer(range_size, num_epochs=None,shuffle=True, seed=None, capacity=32)
-# index_dequeue_op = index_queue.dequeue_many(train_batch_size, 'index_dequeue')
+paths_alpha,paths_eps,paths_BG = load_path(dataset_alpha,dataset_eps,dataset_BG,hard_mode = hard_mode)
+
+range_size = len(paths_alpha)
+print('range_size is %d' % range_size)
+#range_size/batch_size has to be int
+batchs_per_epoch = int(range_size/train_batch_size)
+
+index_queue = tf.train.range_input_producer(range_size, num_epochs=None,shuffle=True, seed=None, capacity=32)
+index_dequeue_op = index_queue.dequeue_many(train_batch_size, 'index_dequeue')
 ''''''
 
 image_batch = tf.placeholder(tf.float32, shape=(train_batch_size,image_size,image_size,3))
@@ -67,7 +67,7 @@ b_input = tf.concat([b_RGB,b_trimap],3)
 with tf.name_scope('vgg16') as vgg16_scope:
     # conv1_1
     with tf.name_scope('conv1_1') as scope:
-        kernel = tf.Variable(tf.truncated_normal([3, 3, 4, 64], dtype=tf.float32,
+        kernel = tf.Variable(tf.truncated_normal([3, 3, 3, 64], dtype=tf.float32,
                                                  stddev=1e-1), name='weights')
         conv = tf.nn.conv2d(b_input, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
