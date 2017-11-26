@@ -24,7 +24,6 @@ hard_samples = [
 ]
 
 def unpool(pool, ind, ksize=[1, 2, 2, 1], scope='unpool'):
-    
 	with tf.variable_scope(scope):
 		input_shape = pool.get_shape().as_list()
 		output_shape = (input_shape[0], input_shape[1] * ksize[1], input_shape[2] * ksize[2], input_shape[3])

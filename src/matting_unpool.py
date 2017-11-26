@@ -49,8 +49,8 @@ tf.add_to_collection('image_batch',image_batch)
 tf.add_to_collection('GT_trimap',GT_trimap)
 tf.add_to_collection('training',training)
 
-en_parameters = []
-pool_parameters = []
+# en_parameters = []
+# pool_parameters = []
 
 b_RGB = tf.identity(image_batch,name = 'b_RGB')
 b_trimap = tf.identity(GT_trimap,name = 'b_trimap')
@@ -64,12 +64,16 @@ tf.summary.image('raw_RGBs',raw_RGBs,max_outputs = 5)
 
 b_input = tf.concat([b_RGB,b_trimap],3)
 
-with tf.name_scope('vgg16') as vgg16_scope:
+
+def build_reduced_vgg16_graph(raw_RGBs):
+    en_parameters = []
+    pool_parameters = []
+
     # conv1_1
     with tf.name_scope('conv1_1') as scope:
         kernel = tf.Variable(tf.truncated_normal([3, 3, 3, 64], dtype=tf.float32,
                                                  stddev=1e-1), name='weights')
-        conv = tf.nn.conv2d(b_input, kernel, [1, 1, 1, 1], padding='SAME')
+        conv = tf.nn.conv2d(raw_RGB, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                              trainable=True, name='biases')
         out = tf.nn.bias_add(conv, biases)
@@ -311,19 +315,27 @@ with tf.name_scope('vgg16') as vgg16_scope:
                              trainable=True, name='biases')
         out = tf.nn.bias_add(conv, biases)
         deconv1_2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training), name='deconv1_2')
-    #pred_RGB
-    with tf.variable_scope('pred_RGB') as scope:
+    #pred_RGBs
+    with tf.variable_scope('pred_RGBs') as scope:
         kernel = tf.Variable(tf.truncated_normal([5, 5, 64, 3], dtype=tf.float32,
                                                  stddev=1e-1), name='weights')
         conv = tf.nn.conv2d(deconv1_2, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[3], dtype=tf.float32),
                              trainable=True, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        pred_RGB = tf.nn.sigmoid(out)
+        pred_RGBs = tf.nn.sigmoid(out)
 
-tf.add_to_collection("pred_RGB", pred_RGB)
-tf.summary.image('pred_RGB',pred_RGB,max_outputs = 5)
-c_diff = tf.sqrt(tf.square(pred_RGB - raw_RGBs) + 1e-12)/255.0
+    return en_parameters, conv6_1, pred_RGBs
+
+# def build_train_graph():
+#     with tf.name_scope('reduced_vgg16') as scope:
+#         pass
+
+en_parameters, conv6_1, pred_RGBs = build_reduced_vgg16_graph(b_input)
+
+tf.add_to_collection("pred_RGBs", pred_RGBs)
+tf.summary.image('pred_RGB',pred_RGBs,max_outputs = 5)
+c_diff = tf.sqrt(tf.square(pred_RGBs - raw_RGBs) + 1e-12)/255.0
 loss = tf.reduce_sum(c_diff)
 tf.summary.scalar('loss',loss)
 global_step = tf.Variable(0,trainable=False)
@@ -340,6 +352,7 @@ with tf.Session(config=tf.ConfigProto(gpu_options = gpu_options)) as sess:
     tf.train.start_queue_runners(coord=coord,sess=sess)
     batch_num = 0
     epoch_num = 0
+
     #initialize all parameters in vgg16
     if not pretrained_model:
         weights = np.load(model_path)
@@ -372,7 +385,7 @@ with tf.Session(config=tf.ConfigProto(gpu_options = gpu_options)) as sess:
 
             feed = {image_batch:batch_RGBs, GT_matte_batch:batch_alphas,GT_trimap:batch_trimaps, GTBG_batch:batch_BGs, GTFG_batch:batch_FGs,raw_RGBs:RGBs_with_mean,training:True}
 
-            _,loss,summary_str,step= sess.run([train_op,total_loss,summary_op,global_step],feed_dict = feed)
+            _,loss,summary_str,step= sess.run([train_op,loss,summary_op,global_step],feed_dict = feed)
             print('epoch %d   batch %d   loss is %f' %(epoch_num,batch_num,loss))
 
             if step%200 == 0:
