@@ -10,7 +10,7 @@ import cv2
 
 class DeconvNet:
     def __init__(self, use_cpu=False, checkpoint_dir='./checkpoints/'):
-        self.maybe_download_and_extract()
+        # self.maybe_download_and_extract()
 
         self.build(use_cpu=use_cpu)
 
@@ -100,9 +100,10 @@ class DeconvNet:
 
         with tf.device(device):
             self.x = tf.placeholder(tf.float32, shape=(1, None, None, 3))
-            self.y = tf.placeholder(tf.int64, shape=(1, None, None))
-            expected = tf.expand_dims(self.y, -1)
-            self.rate = tf.placeholder(tf.float32, shape=[])
+            # self.y = tf.placeholder(tf.int64, shape=(1, None, None))
+            # expected = tf.expand_dims(self.y, -1)
+            # self.rate = tf.placeholder(tf.float32, shape=[])
+            self.rate = 0.01
 
             conv_1_1 = self.conv_layer(self.x, [3, 3, 3, 64], 64, 'conv_1_1')
             conv_1_2 = self.conv_layer(conv_1_1, [3, 3, 64, 64], 64, 'conv_1_2')
@@ -165,16 +166,20 @@ class DeconvNet:
             deconv_1_2 = self.deconv_layer(unpool_1, [3, 3, 64, 64], 64, 'deconv_1_2')
             deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv_1_1')
 
-            score_1 = self.deconv_layer(deconv_1_1, [1, 1, 21, 32], 21, 'score_1')
+            self.y = deconv_1_1
+            c_diff = tf.sqrt(tf.square(self.y - self.x) + 1e-12) / 255.0
+            self.loss = tf.reduce_sum(c_diff)
 
-            logits = tf.reshape(score_1, (-1, 21))
-            cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.reshape(expected, [-1]), logits=logits, name='x_entropy')
-            self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
+            # score_1 = self.deconv_layer(deconv_1_1, [1, 1, 21, 32], 21, 'score_1')
+            #
+            # logits = tf.reshape(score_1, (-1, 21))
+            # cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.reshape(expected, [-1]), logits=logits, name='x_entropy')
+            # self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
 
             self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
 
-            self.prediction = tf.argmax(tf.reshape(tf.nn.softmax(logits), tf.shape(score_1)), dimension=3)
-            self.accuracy = tf.reduce_sum(tf.pow(self.prediction - expected, 2))
+            # self.prediction = tf.argmax(tf.reshape(tf.nn.softmax(logits), tf.shape(score_1)), dimension=3)
+            # self.accuracy = tf.reduce_sum(tf.pow(self.prediction - expected, 2))
 
     def weight_variable(self, shape):
         initial = tf.truncated_normal(shape, stddev=0.1)
@@ -284,3 +289,35 @@ class DeconvNet:
 
         delta = tf.SparseTensor(indices, values, tf.to_int64(out_shape))
         return tf.sparse_tensor_to_dense(tf.sparse_reorder(delta))
+
+if __name__ == '__main__':
+    import itertools
+    def load_images():
+        from PIL import Image
+        image_dir = '../images'
+
+        RGBs = []
+        for i, image in enumerate(os.listdir(image_dir)):
+            image_path = os.path.join(image_dir, image)
+            RGBs.append(np.array(Image.open(image_path).resize((320, 320))).astype(np.int))
+        return RGBs
+
+    network = DeconvNet(True)
+    tf.summary.image('raw_RGBs', network.x, max_outputs=5)
+    tf.summary.image('pred_RGBs', network.y, max_outputs=5)
+    tf.summary.scalar('loss', network.loss)
+    merger = tf.summary.merge_all()
+    init = tf.global_variables_initializer()
+    summary_writer = tf.summary.FileWriter('../temp/logs/train', tf.get_default_graph())
+
+    config = tf.ConfigProto(device_count={"CPU": 24, "GPU": 0})
+    # sess = tf.Session()
+    sess = tf.Session()
+    sess.run(init)
+
+    images = load_images()
+    for i in itertools.count():
+        # images = random.shuffle(images)
+        _, summary = sess.run([network.train_step, merger], feed_dict={network.x: images})
+        summary_writer.add_summary(summary, i)
+        print('epoch: %d', i)

@@ -336,92 +336,92 @@ def build_reduced_vgg16_graph(raw_RGBs):
 
 en_parameters, conv6_1, pred_RGBs = build_reduced_vgg16_graph(raw_RGBs)
 
-# tf.add_to_collection("pred_RGBs", pred_RGBs)
-# tf.summary.image('pred_RGB',pred_RGBs,max_outputs = 5)
-# c_diff = tf.sqrt(tf.square(pred_RGBs - raw_RGBs) + 1e-12)/255.0
-# loss = tf.reduce_sum(c_diff)
-# tf.summary.scalar('loss',loss)
-# global_step = tf.Variable(0,trainable=False)
-# train_op = tf.train.AdamOptimizer(learning_rate = 1e-5).minimize(loss,global_step = global_step)
-# saver = tf.train.Saver(tf.trainable_variables() , max_to_keep = 1)
-#
-# coord = tf.train.Coordinator()
-# summary_op = tf.summary.merge_all()
-# summary_writer = tf.summary.FileWriter(log_dir, tf.get_default_graph())
-#
-# gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction = 0.6)
-# with tf.Session(config=tf.ConfigProto(gpu_options = gpu_options)) as sess:
-#     sess.run(tf.global_variables_initializer())
-#     tf.train.start_queue_runners(coord=coord,sess=sess)
-#     batch_num = 0
-#     epoch_num = 0
-#
-#     #initialize all parameters in vgg16
-#     if not pretrained_model:
-#         weights = np.load(model_path)
-#         keys = sorted(weights.keys())
-#         for i, k in enumerate(keys):
-#             if i == 28:
-#                 break
-#             if k == 'conv1_1_W':
-#                 sess.run(en_parameters[i].assign(np.concatenate([weights[k],np.zeros([3,3,1,64])],axis = 2)))
-#             else:
-#                 if k=='fc6_W':
-#                     tmp = np.reshape(weights[k],(7,7,512,4096))
-#                     sess.run(en_parameters[i].assign(tmp))
-#                 else:
-#                     sess.run(en_parameters[i].assign(weights[k]))
-#         print('finish loading vgg16 model')
-#     else:
-#         print('Restoring pretrained model...')
-#         saver.restore(sess,tf.train.latest_checkpoint('./model'))
-#     sess.graph.finalize()
-#
-#     while epoch_num < max_epochs:
-#         while batch_num < batchs_per_epoch:
-#             batch_index = sess.run(index_dequeue_op)
-#
-#             batch_alpha_paths = paths_alpha[batch_index]
-#             batch_eps_paths = paths_eps[batch_index]
-#             batch_BG_paths = paths_BG[batch_index]
-#             batch_RGBs,batch_trimaps,batch_alphas,batch_BGs,batch_FGs,RGBs_with_mean = load_data(batch_alpha_paths,batch_eps_paths,batch_BG_paths)
-#
-#             feed = {image_batch:batch_RGBs, GT_matte_batch:batch_alphas,GT_trimap:batch_trimaps, GTBG_batch:batch_BGs, GTFG_batch:batch_FGs,raw_RGBs:RGBs_with_mean,training:True}
-#
-#             _,loss,summary_str,step= sess.run([train_op,loss,summary_op,global_step],feed_dict = feed)
-#             print('epoch %d   batch %d   loss is %f' %(epoch_num,batch_num,loss))
-#
-#             if step%200 == 0:
-#                 print('saving model......')
-#                 saver.save(sess,'./model/model.ckpt',global_step = step, write_meta_graph = False)
-#
-#                 print('test on validation data...')
-#                 test_RGBs,test_trimaps,test_alphas,all_shape,image_paths,trimap_size= load_alphamatting_data(test_dir)
-#                 vali_diff = []
-#
-#                 for i in range(len(test_RGBs)):
-#                     test_RGB = np.expand_dims(test_RGBs[i],0)
-#                     test_trimap = np.expand_dims(test_trimaps[i],0)
-#                     test_alpha = test_alphas[i]
-#                     shape_i = all_shape[i]
-#                     image_path = image_paths[i]
-#
-#                     feed = {image_batch:test_RGB,GT_trimap:test_trimap,training:False}
-#                     test_out = sess.run(pred_final,feed_dict = feed)
-#
-#                     i_out = misc.imresize(test_out[0,:,:,0],shape_i)
-#                     vali_diff.append(np.sum(np.abs(i_out/255.0-test_alpha))/trimap_size[i])
-#                     misc.imsave(os.path.join(test_outdir,image_path),i_out)
-#
-#                 vali_loss = np.mean(vali_diff)
-#                 print('validation loss is '+ str(vali_loss))
-#                 validation_summary = tf.Summary()
-#                 validation_summary.value.add(tag='validation_loss',simple_value = vali_loss)
-#                 summary_writer.add_summary(validation_summary,step)
-#
-#             summary_writer.add_summary(summary_str,global_step = step)
-#             batch_num += 1
-#         batch_num = 0
-#         epoch_num += 1
+tf.add_to_collection("pred_RGBs", pred_RGBs)
+tf.summary.image('pred_RGB',pred_RGBs,max_outputs = 5)
+c_diff = tf.sqrt(tf.square(pred_RGBs - raw_RGBs) + 1e-12)/255.0
+loss = tf.reduce_sum(c_diff)
+tf.summary.scalar('loss',loss)
+global_step = tf.Variable(0,trainable=False)
+train_op = tf.train.AdamOptimizer(learning_rate = 1e-5).minimize(loss,global_step = global_step)
+saver = tf.train.Saver(tf.trainable_variables() , max_to_keep = 1)
+
+coord = tf.train.Coordinator()
+summary_op = tf.summary.merge_all()
+summary_writer = tf.summary.FileWriter(log_dir, tf.get_default_graph())
+
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction = 0.6)
+with tf.Session(config=tf.ConfigProto(gpu_options = gpu_options)) as sess:
+    sess.run(tf.global_variables_initializer())
+    tf.train.start_queue_runners(coord=coord,sess=sess)
+    batch_num = 0
+    epoch_num = 0
+
+    #initialize all parameters in vgg16
+    if not pretrained_model:
+        weights = np.load(model_path)
+        keys = sorted(weights.keys())
+        for i, k in enumerate(keys):
+            if i == 28:
+                break
+            if k == 'conv1_1_W':
+                sess.run(en_parameters[i].assign(np.concatenate([weights[k],np.zeros([3,3,1,64])],axis = 2)))
+            else:
+                if k=='fc6_W':
+                    tmp = np.reshape(weights[k],(7,7,512,4096))
+                    sess.run(en_parameters[i].assign(tmp))
+                else:
+                    sess.run(en_parameters[i].assign(weights[k]))
+        print('finish loading vgg16 model')
+    else:
+        print('Restoring pretrained model...')
+        saver.restore(sess,tf.train.latest_checkpoint('./model'))
+    sess.graph.finalize()
+
+    while epoch_num < max_epochs:
+        while batch_num < batchs_per_epoch:
+            batch_index = sess.run(index_dequeue_op)
+
+            batch_alpha_paths = paths_alpha[batch_index]
+            batch_eps_paths = paths_eps[batch_index]
+            batch_BG_paths = paths_BG[batch_index]
+            batch_RGBs,batch_trimaps,batch_alphas,batch_BGs,batch_FGs,RGBs_with_mean = load_data(batch_alpha_paths,batch_eps_paths,batch_BG_paths)
+
+            feed = {image_batch:batch_RGBs, GT_matte_batch:batch_alphas,GT_trimap:batch_trimaps, GTBG_batch:batch_BGs, GTFG_batch:batch_FGs,raw_RGBs:RGBs_with_mean,training:True}
+
+            _,loss,summary_str,step= sess.run([train_op,loss,summary_op,global_step],feed_dict = feed)
+            print('epoch %d   batch %d   loss is %f' %(epoch_num,batch_num,loss))
+
+            if step%200 == 0:
+                print('saving model......')
+                saver.save(sess,'./model/model.ckpt',global_step = step, write_meta_graph = False)
+
+                print('test on validation data...')
+                test_RGBs,test_trimaps,test_alphas,all_shape,image_paths,trimap_size= load_alphamatting_data(test_dir)
+                vali_diff = []
+
+                for i in range(len(test_RGBs)):
+                    test_RGB = np.expand_dims(test_RGBs[i],0)
+                    test_trimap = np.expand_dims(test_trimaps[i],0)
+                    test_alpha = test_alphas[i]
+                    shape_i = all_shape[i]
+                    image_path = image_paths[i]
+
+                    feed = {image_batch:test_RGB,GT_trimap:test_trimap,training:False}
+                    test_out = sess.run(pred_final,feed_dict = feed)
+
+                    i_out = misc.imresize(test_out[0,:,:,0],shape_i)
+                    vali_diff.append(np.sum(np.abs(i_out/255.0-test_alpha))/trimap_size[i])
+                    misc.imsave(os.path.join(test_outdir,image_path),i_out)
+
+                vali_loss = np.mean(vali_diff)
+                print('validation loss is '+ str(vali_loss))
+                validation_summary = tf.Summary()
+                validation_summary.value.add(tag='validation_loss',simple_value = vali_loss)
+                summary_writer.add_summary(validation_summary,step)
+
+            summary_writer.add_summary(summary_str,global_step = step)
+            batch_num += 1
+        batch_num = 0
+        epoch_num += 1
 
 
