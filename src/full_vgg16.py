@@ -27,6 +27,8 @@ def build_vgg16_graph(raw_RGBs, training):
     en_parameters = []
     pool_parameters = []
 
+    # [None, 320, 320, 3]
+
     # conv1_1
     with tf.name_scope('conv1_1') as scope:
         kernel = tf.Variable(tf.truncated_normal([3, 3, 3, 64], dtype=tf.float32,
@@ -37,6 +39,8 @@ def build_vgg16_graph(raw_RGBs, training):
         out = tf.nn.bias_add(conv, biases)
         conv1_1 = tf.nn.relu(out, name=scope)
         en_parameters += [kernel, biases]
+
+    # [None, 320, 320, 64]
 
     # conv1_2
     with tf.name_scope('conv1_2') as scope:
@@ -49,9 +53,13 @@ def build_vgg16_graph(raw_RGBs, training):
         conv1_2 = tf.nn.relu(out, name=scope)
         en_parameters += [kernel, biases]
 
+    # [None, 320, 320, 64]
+
     # pool1
     pool1,arg1 = tf.nn.max_pool_with_argmax(conv1_2,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool1')
     pool_parameters.append(arg1)
+
+    # [None, 160, 160, 64]
 
     # conv2_1
     with tf.name_scope('conv2_1') as scope:
@@ -64,6 +72,8 @@ def build_vgg16_graph(raw_RGBs, training):
         conv2_1 = tf.nn.relu(out, name=scope)
         en_parameters += [kernel, biases]
 
+    # [None, 160, 160, 128]
+
     # conv2_2
     with tf.name_scope('conv2_2') as scope:
         kernel = tf.Variable(tf.truncated_normal([3, 3, 128, 128], dtype=tf.float32,
@@ -75,9 +85,13 @@ def build_vgg16_graph(raw_RGBs, training):
         conv2_2 = tf.nn.relu(out, name=scope)
         en_parameters += [kernel, biases]
 
+    # [None, 160, 160, 128]
+
     # pool2
     pool2,arg2 = tf.nn.max_pool_with_argmax(conv2_2,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool2')
     pool_parameters.append(arg2)
+
+    # [None 80, 80, 128]
 
     # conv3_1
     with tf.name_scope('conv3_1') as scope:
@@ -90,6 +104,8 @@ def build_vgg16_graph(raw_RGBs, training):
         conv3_1 = tf.nn.relu(out, name=scope)
         en_parameters += [kernel, biases]
 
+    # [None 80, 80, 256]
+
     # conv3_2
     with tf.name_scope('conv3_2') as scope:
         kernel = tf.Variable(tf.truncated_normal([3, 3, 256, 256], dtype=tf.float32,
@@ -101,6 +117,8 @@ def build_vgg16_graph(raw_RGBs, training):
         conv3_2 = tf.nn.relu(out, name=scope)
         en_parameters += [kernel, biases]
 
+    # [None 80, 80, 256]
+
     # conv3_3
     with tf.name_scope('conv3_3') as scope:
         kernel = tf.Variable(tf.truncated_normal([3, 3, 256, 256], dtype=tf.float32,
@@ -111,6 +129,8 @@ def build_vgg16_graph(raw_RGBs, training):
         out = tf.nn.bias_add(conv, biases)
         conv3_3 = tf.nn.relu(out, name=scope)
         en_parameters += [kernel, biases]
+
+    # [None 80, 80, 256]
 
     # pool3
     pool3,arg3 = tf.nn.max_pool_with_argmax(conv3_3,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool3')
@@ -353,6 +373,8 @@ def build_vgg16_graph(raw_RGBs, training):
         out = tf.nn.bias_add(conv, biases)
         deconv3_3 = tf.nn.relu(tf.layers.batch_normalization(out,training=training), name='deconv3_2')
 
+    # [None, 80, 80, 256]
+
     #deconv3_2
     with tf.variable_scope('deconv3_2') as scope:
         kernel = tf.Variable(tf.truncated_normal([3, 3, 256, 256], dtype=tf.float32,
@@ -362,6 +384,8 @@ def build_vgg16_graph(raw_RGBs, training):
                              trainable=True, name='biases')
         out = tf.nn.bias_add(conv, biases)
         deconv3_2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training), name='deconv3_2')
+
+    # [None, 80, 80, 256]
 
     #deconv3_1
     with tf.variable_scope('deconv3_1') as scope:
@@ -373,8 +397,12 @@ def build_vgg16_graph(raw_RGBs, training):
         out = tf.nn.bias_add(conv, biases)
         deconv3_1 = tf.nn.relu(tf.layers.batch_normalization(out,training=training), name='deconv3_1')
 
+    # [None, 80, 80, 256]
+
     #unpool2
     unpool2 = unpool(deconv3_1,pool_parameters[-4])
+
+    # [None, 160, 160, 128]
 
     # deconv2_2
     with tf.variable_scope('deconv2_2') as scope:
@@ -386,6 +414,8 @@ def build_vgg16_graph(raw_RGBs, training):
         out = tf.nn.bias_add(conv, biases)
         deconv2_2 = tf.nn.relu(tf.layers.batch_normalization(out, training=training), name='deconv2_2')
 
+    # [None, 160, 160, 128]
+
     # deconv2_1
     with tf.variable_scope('deconv2_1') as scope:
         kernel = tf.Variable(tf.truncated_normal([5, 5, 128, 64], dtype=tf.float32,
@@ -396,8 +426,12 @@ def build_vgg16_graph(raw_RGBs, training):
         out = tf.nn.bias_add(conv, biases)
         deconv2_1 = tf.nn.relu(tf.layers.batch_normalization(out, training=training), name='deconv2_1')
 
+    # [None, 160, 160, 64]
+
     #unpool1
     unpool1 = unpool(deconv2_1,pool_parameters[-5])
+
+    # [None, 320, 320, 64]
 
     #deconv1_2
     with tf.variable_scope('deconv1_2') as scope:
@@ -409,15 +443,20 @@ def build_vgg16_graph(raw_RGBs, training):
         out = tf.nn.bias_add(conv, biases)
         deconv1_2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training), name='deconv1_2')
 
+    # [None, 320, 320, 64]
+
     # deconv1_1
     with tf.variable_scope('deconv1_1') as scope:
-        kernel = tf.Variable(tf.truncated_normal([3, 3, 64, 32], dtype=tf.float32,
+        kernel = tf.Variable(tf.truncated_normal([3, 3, 64, 3], dtype=tf.float32,
                                                  stddev=1e-1), name='weights')
         conv = tf.nn.conv2d(deconv1_2, kernel, [1, 1, 1, 1], padding='SAME')
-        biases = tf.Variable(tf.constant(0.0, shape=[32], dtype=tf.float32),
+        biases = tf.Variable(tf.constant(0.0, shape=[3], dtype=tf.float32),
                              trainable=True, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        deconv1_1 = tf.nn.relu(tf.layers.batch_normalization(out, training=training), name='deconv1_1')
+        # deconv1_1 = tf.nn.relu(tf.layers.batch_normalization(out, training=training), name='deconv1_1')
+        deconv1_1 = tf.nn.relu(out, name='deconv1_1')
+
+    # [None, 320, 320, 3]
 
     return en_parameters, fc_7, deconv1_1
 

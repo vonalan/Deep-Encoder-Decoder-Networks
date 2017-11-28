@@ -6,7 +6,7 @@ import itertools
 import numpy as np
 import tensorflow as tf
 
-import reduced_vgg16 as vgg16
+import full_vgg16 as vgg16
 
 train_batch_size = 2
 
