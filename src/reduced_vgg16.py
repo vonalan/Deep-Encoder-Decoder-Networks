@@ -276,13 +276,16 @@ def build_reduced_vgg16_graph(raw_RGBs, training):
 
     # deconv1_1
     with tf.variable_scope('deconv1_1') as scope:
-        kernel = tf.Variable(tf.truncated_normal([5, 5, 64, 64], dtype=tf.float32,
+        kernel = tf.Variable(tf.truncated_normal([5, 5, 64, 3], dtype=tf.float32,
                                                  stddev=1e-1), name='weights')
         conv = tf.nn.conv2d(deconv1_1, kernel, [1, 1, 1, 1], padding='SAME')
-        biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
+        biases = tf.Variable(tf.constant(0.0, shape=[3], dtype=tf.float32),
                              trainable=True, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        deconv1_1 = tf.nn.relu(tf.layers.batch_normalization(out, training=training), name='deconv1_1')
+        # deconv1_1 = tf.nn.relu(tf.layers.batch_normalization(out, training=training), name='deconv1_1')
+        deconv1_1 = tf.nn.relu(out, name='deconv1_1')
+
+    return en_parameters, conv6_1, deconv1_1
 
 def build_vgg16_graph(raw_RGBs):
     pass
