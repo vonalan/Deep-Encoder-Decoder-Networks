@@ -460,6 +460,23 @@ def build_vgg16_graph(raw_RGBs, training):
 
     return en_parameters, fc_7, deconv1_1
 
+def initialize_with_pretrained_model(sess, en_parameters, model_path):
+    weights = np.load(model_path)
+    keys = sorted(weights.keys())
+    for i, k in enumerate(keys):
+        if i == 28:
+            break
+        if k == 'conv1_1_W':
+            # sess.run(en_parameters[i].assign(np.concatenate([weights[k],np.zeros([3,3,1,64])],axis = 2)))
+            sess.run(en_parameters[i].assign(weights[k]))
+        else:
+            # if k=='fc6_W':
+            #     tmp = np.reshape(weights[k],(7,7,512,4096))
+            #     sess.run(en_parameters[i].assign(tmp))
+            # else:
+            #     sess.run(en_parameters[i].assign(weights[k]))
+            sess.run(en_parameters[i].assign(weights[k]))
+
 if __name__ == '__main__':
     train_batch_size = 1
     image_size = 320

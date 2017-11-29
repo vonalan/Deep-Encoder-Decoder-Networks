@@ -2,7 +2,7 @@ import os
 import random
 import tensorflow as tf
 import time
-import wget
+# import wget
 import tarfile
 import numpy as np
 import cv2

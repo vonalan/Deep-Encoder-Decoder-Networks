@@ -50,8 +50,9 @@ def build_reduced_vgg16_graph(raw_RGBs, training):
         en_parameters += [kernel, biases]
 
     # pool1
-    pool1,arg1 = tf.nn.max_pool_with_argmax(conv1_2,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool1')
-    pool_parameters.append(arg1)
+    with tf.device('/gpu:0'):
+        pool1,arg1 = tf.nn.max_pool_with_argmax(conv1_2,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool1')
+        pool_parameters.append(arg1)
 
     # conv2_1
     with tf.name_scope('conv2_1') as scope:
@@ -76,8 +77,9 @@ def build_reduced_vgg16_graph(raw_RGBs, training):
         en_parameters += [kernel, biases]
 
     # pool2
-    pool2,arg2 = tf.nn.max_pool_with_argmax(conv2_2,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool2')
-    pool_parameters.append(arg2)
+    with tf.device('/gpu:0'):
+        pool2,arg2 = tf.nn.max_pool_with_argmax(conv2_2,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool2')
+        pool_parameters.append(arg2)
 
     # conv3_1
     with tf.name_scope('conv3_1') as scope:
@@ -113,8 +115,9 @@ def build_reduced_vgg16_graph(raw_RGBs, training):
         en_parameters += [kernel, biases]
 
     # pool3
-    pool3,arg3 = tf.nn.max_pool_with_argmax(conv3_3,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool3')
-    pool_parameters.append(arg3)
+    with tf.device('/gpu:0'):
+        pool3,arg3 = tf.nn.max_pool_with_argmax(conv3_3,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool3')
+        pool_parameters.append(arg3)
 
     # conv4_1
     with tf.name_scope('conv4_1') as scope:
@@ -150,8 +153,9 @@ def build_reduced_vgg16_graph(raw_RGBs, training):
         en_parameters += [kernel, biases]
 
     # pool4
-    pool4,arg4 = tf.nn.max_pool_with_argmax(conv4_3,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool4')
-    pool_parameters.append(arg4)
+    with tf.device('/gpu:0'):
+        pool4,arg4 = tf.nn.max_pool_with_argmax(conv4_3,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool4')
+        pool_parameters.append(arg4)
 
     # conv5_1
     with tf.name_scope('conv5_1') as scope:
@@ -187,8 +191,10 @@ def build_reduced_vgg16_graph(raw_RGBs, training):
         en_parameters += [kernel, biases]
 
     # pool5
-    pool5,arg5 = tf.nn.max_pool_with_argmax(conv5_3,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool4')
-    pool_parameters.append(arg5)
+    with tf.device('/gpu:0'):
+        pool5,arg5 = tf.nn.max_pool_with_argmax(conv5_3,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool4')
+        pool_parameters.append(arg5)
+
     # conv6_1
     with tf.name_scope('conv6_1') as scope:
         kernel = tf.Variable(tf.truncated_normal([7, 7, 512, 4096], dtype=tf.float32,
@@ -287,5 +293,18 @@ def build_reduced_vgg16_graph(raw_RGBs, training):
 
     return en_parameters, conv6_1, deconv1_1
 
-def build_vgg16_graph(raw_RGBs):
-    pass
+def initialize_with_pretrained_model(sess, en_parameters, model_path):
+    weights = np.load(model_path)
+    keys = sorted(weights.keys())
+    for i, k in enumerate(keys):
+        if i == 28:
+            break
+        if k == 'conv1_1_W':
+            # sess.run(en_parameters[i].assign(np.concatenate([weights[k],np.zeros([3,3,1,64])],axis = 2)))
+            sess.run(en_parameters[i].assign(weights[k]))
+        else:
+            if k=='fc6_W':
+                tmp = np.reshape(weights[k],(7,7,512,4096))
+                sess.run(en_parameters[i].assign(tmp))
+            else:
+                sess.run(en_parameters[i].assign(weights[k]))
