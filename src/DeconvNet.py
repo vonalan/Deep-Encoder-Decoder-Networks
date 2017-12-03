@@ -164,7 +164,7 @@ class DeconvNet:
             unpool_1 = self.unpool_layer2x2(deconv_2_1, pool_1_argmax, tf.shape(conv_1_2))
 
             deconv_1_2 = self.deconv_layer(unpool_1, [3, 3, 64, 64], 64, 'deconv_1_2')
-            deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv_1_1')
+            deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 3, 64], 3, 'deconv_1_1')
 
             self.y = deconv_1_1
             c_diff = tf.sqrt(tf.square(self.y - self.x) + 1e-12) / 255.0
@@ -317,7 +317,7 @@ if __name__ == '__main__':
 
     images = load_images()
     for i in itertools.count():
-        # images = random.shuffle(images)
-        _, summary = sess.run([network.train_step, merger], feed_dict={network.x: images})
+        # random.shuffle(images)
+        _, summary = sess.run([network.train_step, merger], feed_dict={network.x: images[:1]})
         summary_writer.add_summary(summary, i)
         print('epoch: %d', i)

@@ -31,7 +31,9 @@ def deconv_2d(x, ksize, bsize, stride=[1,1,1,1], activation=None, use_batch_norm
         biases = tf.Variable(tf.constant(0.0, shape=bsize, dtype=tf.float32),
                              trainable=True, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        out = tf.nn.relu(tf.layers.batch_normalization(out), name=name)
+        if use_batch_normalization:
+            out = tf.layers.batch_normalization(out)
+        out = tf.nn.relu(out, name=name)
         return out, [kernel, biases]
 
 def unpool(pool, ind, ksize=[1, 2, 2, 1], scope='unpool'):

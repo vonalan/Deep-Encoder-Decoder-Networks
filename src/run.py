@@ -6,7 +6,7 @@ import itertools
 import numpy as np
 import tensorflow as tf
 
-import reduced_vgg16_v2 as vgg16
+import reduced_vgg16 as vgg16
 
 train_batch_size = 1
 
@@ -15,7 +15,7 @@ def build_train_graph(train_batch_size=1, image_size=320):
     training = tf.placeholder(tf.bool)
     en_parameters, _, pred_RGBs = vgg16.build_vgg16_graph(raw_RGBs, training)
 
-    c_diff = tf.sqrt(tf.square(pred_RGBs - raw_RGBs) + 1e-12) / 255.0
+    c_diff = tf.sqrt(tf.square(pred_RGBs - raw_RGBs) + 1e-12)
     loss = tf.reduce_sum(c_diff)
     optimizer = tf.train.AdamOptimizer(learning_rate=1e-2).minimize(loss) # learning_rate=1e-5
     return en_parameters, raw_RGBs, pred_RGBs, loss, optimizer, training
@@ -57,12 +57,12 @@ def main():
     #     saver.restore(sess, tf.train.latest_checkpoint('./model'))
     # sess.graph.finalize()
 
-    # images = load_images()
-    # for i in itertools.count():
-    #     # images = random.shuffle(images)
-    #     _, summary = sess.run([optimizer, merger], feed_dict={raw_RGBs: images, training: False})
-    #     summary_writer.add_summary(summary, i)
-    #     print('epoch: %d', i)
+    images = load_images()
+    for i in itertools.count():
+        # images = random.shuffle(images)
+        _, summary = sess.run([optimizer, merger], feed_dict={raw_RGBs: images, training: False})
+        summary_writer.add_summary(summary, i)
+        print('epoch: %d', i)
 
 if __name__ == '__main__':
     main()
