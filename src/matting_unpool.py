@@ -234,6 +234,7 @@ def build_reduced_vgg16_graph(raw_RGBs):
     # pool5
     pool5,arg5 = tf.nn.max_pool_with_argmax(conv5_3,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool4')
     pool_parameters.append(arg5)
+
     # conv6_1
     with tf.name_scope('conv6_1') as scope:
         kernel = tf.Variable(tf.truncated_normal([7, 7, 512, 4096], dtype=tf.float32,

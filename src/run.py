@@ -6,14 +6,14 @@ import itertools
 import numpy as np
 import tensorflow as tf
 
-import reduced_vgg16 as vgg16
+import reduced_vgg16_v2 as vgg16
 
-train_batch_size = 2
+train_batch_size = 1
 
 def build_train_graph(train_batch_size=1, image_size=320):
     raw_RGBs = tf.placeholder(tf.float32, shape=[train_batch_size, image_size, image_size, 3])
     training = tf.placeholder(tf.bool)
-    en_parameters, _, pred_RGBs = vgg16.build_reduced_vgg16_graph(raw_RGBs, training)
+    en_parameters, _, pred_RGBs = vgg16.build_vgg16_graph(raw_RGBs, training)
 
     c_diff = tf.sqrt(tf.square(pred_RGBs - raw_RGBs) + 1e-12) / 255.0
     loss = tf.reduce_sum(c_diff)
@@ -48,21 +48,21 @@ def main():
     pretrained_model = False
     model_path = r'E:\Databases\vgg16\vgg16_weights.npz'
 
-    # initialize all parameters in vgg16
-    if not pretrained_model:
-        vgg16.initialize_with_pretrained_model(sess, en_parameters, model_path)
-        print('finish loading vgg16 model')
-    else:
-        print('Restoring pretrained model...')
-        saver.restore(sess, tf.train.latest_checkpoint('./model'))
-    sess.graph.finalize()
+    # # initialize all parameters in vgg16
+    # if not pretrained_model:
+    #     vgg16.initialize_with_pretrained_model(sess, en_parameters, model_path)
+    #     print('finish loading vgg16 model')
+    # else:
+    #     print('Restoring pretrained model...')
+    #     saver.restore(sess, tf.train.latest_checkpoint('./model'))
+    # sess.graph.finalize()
 
-    images = load_images()
-    for i in itertools.count():
-        # images = random.shuffle(images)
-        _, summary = sess.run([optimizer, merger], feed_dict={raw_RGBs: images, training: False})
-        summary_writer.add_summary(summary, i)
-        print('epoch: %d', i)
+    # images = load_images()
+    # for i in itertools.count():
+    #     # images = random.shuffle(images)
+    #     _, summary = sess.run([optimizer, merger], feed_dict={raw_RGBs: images, training: False})
+    #     summary_writer.add_summary(summary, i)
+    #     print('epoch: %d', i)
 
 if __name__ == '__main__':
     main()
