@@ -33,7 +33,7 @@ for i, image in enumerate(image_list):
 
 np.random.shuffle(images)
 train_images = images[:80]
-test_images = images[20:]
+test_images = images[80:]
 print(images.shape, train_images.shape, test_images.shape)
 
 for i in itertools.count(): 
