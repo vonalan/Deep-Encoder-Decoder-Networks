@@ -30,7 +30,7 @@ images = np.zeros((len(image_list), 224, 224, 3))
 for i, image in enumerate(image_list): 
     image_path = os.path.join(image_dir, image)
     images[i] = np.array(Image.open(image_path).resize((224,224)))
-
+print(image[0,0,0,:])
 np.random.shuffle(images)
 train_images = images[:80]
 test_images = images[80:]
