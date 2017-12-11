@@ -4,6 +4,9 @@ import numpy as np
 import tensorflow as tf
 from keras.layers import Input, Dense
 from keras.models import Model
+from keras.optimizers import SGD, RMSprop
+from keras.losses import categorical_crossentropy
+
 # from keras.applications.vgg16 import VGG16
 # from keras.applications.vgg19 import VGG19
 # from keras.applications.resnet50 import ResNet50
@@ -12,16 +15,37 @@ from keras.applications.inception_v3 import InceptionV3
 # from keras.applications.xception import Xception
 
 def load_classes():
-    pass
+    return []
 
 image_size = (299, 299, 3)
 classes = load_classes()
 # classes = 51
 
-model = InceptionV3(include_top=False, pooling='max')
-x = model.output
-x = Dense(len(classes), activation='softmax', name='predictions')(x)
-model = Model(model.input, x, name='inception_v3')
+base_model = InceptionV3(weights=None, include_top=False, pooling='max')
+x = base_model.output
+x = Dense(1024, activation='relu', name='fc_layer')(x)
+predictions = Dense(len(classes), activation='softmax', name='predictions')(x)
+model = Model(inputs=base_model.input, outputs=predictions, name='inception_v3')
+
+
+# step 01
+for layer in base_model.layers:
+    layer.trainable = False
+model.compile(optimizer=RMSprop(), loss=categorical_crossentropy)
+
+model.fit_generator()
+
+
+# step 02
+for i, layer in enumerate(base_model.layers):
+    print(i, layer.name)
+
+for layer in model.layers:
+    layer.trainable=True
+model.compile(optimizer=SGD(lr=1e-4, momentum=1e-9), loss=categorical_crossentropy)
+
+model.fit_generator()
+
 
 def create_image_tree(sround=1):
     pass

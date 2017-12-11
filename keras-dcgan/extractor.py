@@ -1,4 +1,5 @@
 import os 
+import sys
 
 import numpy as np
 import cv2
@@ -57,20 +58,27 @@ def extract(video_path, sub_image_dir):
     return cnt
 
 if __name__ == '__main__': 
-    video_dir = '../videos'
-    # image_dir = '../images'
+    video_dir = '../hmdb51_org'
+    image_dir = '../hmdb51_org_images'
 
-    video_list = create_video_lists(r'F:\Users\kingdom\Documents\GIT\Inception_Attention_DC\videos') 
+    pid = int(sys.argv[1])
+    tid = int(sys.argv[2])
+
+    video_list = create_video_lists(video_dir) 
     # print(video_list)
     cnt_list = []
+    count = 0
     for class_name, sub_video_list in video_list.items(): 
-        for video_path in sub_video_list: 
-            print(video_path)
-            sub_image_dir = video_path.replace('videos', 'images')
-            if not os.path.exists(sub_image_dir): os.makedirs(sub_image_dir)
-            print(sub_image_dir)
-            cnt = extract(video_path, sub_image_dir)
-            cnt_list.append(cnt)
+        for video_path in sub_video_list:
+            if count % tid == pid:
+                print(video_path)
+                sub_image_dir = video_path.replace(os.path.basename(video_dir), os.path.basename(image_dir))
+                if not os.path.exists(sub_image_dir): os.makedirs(sub_image_dir)
+                print(sub_image_dir)
+                cnt = extract(video_path, sub_image_dir)
+                cnt_list.append(cnt)
+            count += 1
     cn_list = np.array(cnt_list).reshape((-1,1)).astype(int)
-    np.savetxt('hmdb51_frames_stats.txt', cnt_list, fmt='%d')
+    print(cn_list.min(), cn_list.max(), cn_list.mean())
+    np.savetxt('hmdb51_frames_stats_%d.txt'%(pid), cnt_list, fmt='%d')
     
