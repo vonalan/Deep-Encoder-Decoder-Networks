@@ -63,7 +63,7 @@ def train(args, classes, base_model, model):
     valid_generator = data_utils.iter_mini_batch(args, 'validation', len(classes), batch_size=args.batch_size)
 
     # step 01 
-    for layer in base_model.layers:
+    for i, layer in enumerate(base_model.layers):
         layer.trainable = False
     model.compile(optimizer=RMSprop(lr=0.001), loss=categorical_crossentropy, metrics=[categorical_accuracy])
     model.fit_generator(generator=train_generator,
