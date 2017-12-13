@@ -1,6 +1,7 @@
 import os 
 import sys
 import re
+import math
 import random 
 import argparse
 
@@ -33,7 +34,7 @@ def create_video_dicts(video_dir, split_dir, sround=1):
         return None
     result = {}
     sub_dirs = [x[0] for x in tf.gfile.Walk(video_dir)]
-    print(sub_dirs)
+    # print(sub_dirs)
     is_root_dir = True
     for sub_dir in sub_dirs:
         if is_root_dir:
@@ -44,20 +45,20 @@ def create_video_dicts(video_dir, split_dir, sround=1):
         dir_name = os.path.basename(sub_dir)
         if dir_name == video_dir:
             continue
-        tf.logging.info("Looking for images in '" + dir_name + "'")
+        # tf.logging.info("Looking for images in '" + dir_name + "'")
         for extension in extensions:
             file_glob = os.path.join(video_dir, dir_name, '*.' + extension)
             file_list.extend(tf.gfile.Glob(file_glob))
         if not file_list:
             tf.logging.warning('No files found')
             continue
-        if len(file_list) < 100:
-            tf.logging.warning(
-                'WARNING: Folder has less than 100 videos, which may cause issues.')
-        elif len(file_list) > 100:
-            tf.logging.warning(
-                'WARNING: Folder {} has more than {} images. Some images will '
-                'never be selected.'.format(dir_name, 100))
+        # if len(file_list) < 100:
+        #     tf.logging.warning(
+        #         'WARNING: Folder has less than 100 videos, which may cause issues.')
+        # elif len(file_list) > 100:
+        #     tf.logging.warning(
+        #         'WARNING: Folder {} has more than {} images. Some images will '
+        #         'never be selected.'.format(dir_name, 100))
         label_name = re.sub(r'[^a-z0-9]+', ' ', dir_name.lower())
 
         training_videos = []
@@ -90,33 +91,34 @@ def create_video_dicts(video_dir, split_dir, sround=1):
         }
     return result
 
-def create_video_list(args, video_dicts, category):
+def create_video_list(video_dir, video_dicts, category):
     video_list = []
     video_dist = [0] * len(video_dicts.keys())
     for class_name, class_dict in video_dicts.items():
         dir = class_dict['dir']
         for video in class_dict[category]:
-            path = os.path.join(args.video_dir, dir, video)
+            path = os.path.join(video_dir, dir, video)
             video_list.append((path, classes.index(dir)))
             video_dist[classes.index(dir)] += 1
     return len(video_list), video_dist, video_list
 
-def create_image_list(args, video_dicts, category):
+def create_image_list(image_dir, video_dicts, category):
     image_list = []
     image_dist = [0] * len(video_dicts.keys())
     for class_name, class_dict in video_dicts.items():
         dir = class_dict['dir']
         for video in class_dict[category]:
-            path = os.path.join(args.image_dir, dir, video)
+            path = os.path.join(image_dir, dir, video)
             images = os.listdir(path)
             images = [(os.path.join(path, image), classes.index(dir)) for image in images]
             image_list.extend(images)
             image_dist[classes.index(dir)] += len(images)
     return len(image_list), image_dist, image_list
 
-def iter_mini_batch(args, category, batch_size): 
+def iter_mini_batch(args, category, num_classes, batch_size=4):
+    # TODO: resize, crop, flip, distort, blur, ...
     video_dicts = create_video_dicts(args.video_dir, args.split_dir, sround=args.split_round)
-    image_list = create_image_list(args, video_dicts, category)
+    _, _, image_list = create_image_list(args.image_dir, video_dicts, category)
     random.shuffle(image_list)
 
     num_batchs = int(math.ceil(len(image_list)/float(batch_size)))
@@ -124,12 +126,13 @@ def iter_mini_batch(args, category, batch_size):
         sidx = max(0, batch * batch_size)
         eidx = min(len(image_list), (batch + 1) * batch_size)
         num_cur_batch = eidx - sidx
-        image_batch = np.zeros(tuple([batch_size] + args.input_shape))
+        image_batch = np.zeros(tuple([batch_size] + list(args.input_shape)))
         label_batch = np.zeros(tuple([batch_size] + [num_classes]))
         for idx in range(num_cur_batch):
             image_batch[idx] = cv2.resize(cv2.imread(image_list[sidx + idx][0]), args.input_shape[:2])
-            label_batch[idx][image_list[sidx + idx][0]] = 1
+            label_batch[idx][image_list[sidx + idx][1]] = 1
+            # print(image_batch[idx].shape, label_batch[idx])
         yield image_batch, label_batch
 
 if __name__ == "__main__":
-    main(args)
+    iter_mini_batch(args)

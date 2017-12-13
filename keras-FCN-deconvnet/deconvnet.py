@@ -91,11 +91,16 @@ def deconvnet():
     unpool1 = Unpooling2D(m1,deconv2_2)
     #224x224
     deconv1_1 = Conv2DTranspose(64,kernel_size=(3,3),padding='same',activation='relu', name='Xblock1_conv2')(unpool1)
-    deconv1_2 = Conv2DTranspose(64,kernel_size=(3,3),padding='same',activation='relu', name='Xblock1_conv1')(deconv1_1)
-    score_fr = Conv2D(3,kernel_size=(1,1),padding='same')(deconv1_2)
+    deconv1_2 = Conv2DTranspose(3,kernel_size=(3,3),padding='same',activation='relu', name='Xblock1_conv1')(deconv1_1)
+    # score_fr = Conv2D(3,kernel_size=(1,1),padding='same')(deconv1_2)
     #pred32 = Dense(21,activation='softmax')(score_fr)
-    modelD = Model(inputs=inputData, outputs=[score_fr])
+    modelD = Model(inputs=inputData, outputs=[deconv1_2])
     # modelD.load_weights('/home/afagnani/keras-deconvnet/fcn.h5', by_name=True)
     # modelD.load_weights('deconv_weights.h5', by_name=True)
 
     return modelD
+
+if __name__ == '__main__': 
+    model = deconvnet()
+    for i, layer in enumerate(model.layers): 
+        print(i, layer.name, layer.input_shape, layer.output_shape)
