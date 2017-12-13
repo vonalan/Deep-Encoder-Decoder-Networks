@@ -19,12 +19,13 @@ from keras.applications.inception_v3 import InceptionV3
 # from keras.applications.inception_resnet_v2 import InceptionResNetV2
 # from keras.applications.xception import Xception
 
-import data_utils 
+import data_utils
+import deconvnet
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
-parser.add_argument('--base_model', default='inception_v3', type=str)
-parser.add_argument('--input_shape', default=(299,299,3), type=tuple)
+parser.add_argument('--base_model', default='vgg16', type=str)
+parser.add_argument('--input_shape', default=(224,224,3), type=tuple)
 parser.add_argument('--classes_path', default='../data/hmdb51_classes.txt', type=str)
 parser.add_argument('--split_dir', default='../testTrainMulti_7030_splits/')
 parser.add_argument('--split_round', default='1', type=str)
@@ -39,14 +40,8 @@ parser.add_argument('--val_steps', default=500, type=int)
 args, _ = parser.parse_known_args()
 
 def build(classes):
-    base_model = InceptionV3(weights='imagenet', include_top=False) # [299,299,3]
-    x = base_model.output
-    x = GlobalAveragePooling2D()(x)
-    x = Dense(1024, activation='relu', name='fc_layer')(x)
-    predictions = Dense(len(classes), activation='softmax', name='predictions')(x)
-    model = Model(inputs=base_model.input, outputs=predictions, name='inception_v3')
-    for i, layer in enumerate(model.layers):
-        print(i, layer.name)
+    base_model, model = deconvnet.vgg16_convnet()
+    model = deconvnet.vgg16_deconvnet(model)
     return base_model, model
 
 def train(args, classes, base_model, model):
@@ -62,8 +57,8 @@ def train(args, classes, base_model, model):
     tensorboard = TensorBoard(log_dir=os.path.join(args.logdir, "tf_logs"), write_images=True)
 
     # train on generator 
-    train_generator = data_utils.iter_mini_batches(args, 'training', len(classes), batch_size=args.batch_size)
-    valid_generator = data_utils.iter_mini_batches(args, 'validation', len(classes), batch_size=args.batch_size)
+    train_generator = data_utils.iter_mini_batch(args, 'training', len(classes), batch_size=args.batch_size)
+    valid_generator = data_utils.iter_mini_batch(args, 'validation', len(classes), batch_size=args.batch_size)
 
     # step 01 
     for i, layer in enumerate(base_model.layers):

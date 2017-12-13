@@ -39,7 +39,7 @@ parser.add_argument('--val_steps', default=500, type=int)
 args, _ = parser.parse_known_args()
 
 def build(classes):
-    base_model = VGG16(weights=None, include_top=False, pooling='max') # [224,224,3]
+    base_model = VGG16(weights='imagenet', include_top=False, pooling='max') # [224,224,3]
     x = base_model.output
     x = Dense(1024, activation='relu', name='fc_layer')(x)
     predictions = Dense(len(classes), activation='softmax', name='predictions')(x)
@@ -59,8 +59,8 @@ def train(args, classes, base_model, model):
     tensorboard = TensorBoard(log_dir=os.path.join(args.logdir, "tf_logs"), write_images=True)
 
     # train on generator 
-    train_generator = data_utils.iter_mini_batch(args, 'training', len(classes), batch_size=args.batch_size)
-    valid_generator = data_utils.iter_mini_batch(args, 'validation', len(classes), batch_size=args.batch_size)
+    train_generator = data_utils.iter_mini_batches(args, 'training', len(classes), batch_size=args.batch_size)
+    valid_generator = data_utils.iter_mini_batches(args, 'validation', len(classes), batch_size=args.batch_size)
 
     # step 01 
     for layer in base_model.layers:
