@@ -20,6 +20,7 @@ import deconvnet as deconvnet
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
+parser.add_argument('--device', default='gpu', type=str)
 parser.add_argument('--base_model', default='vgg16', type=str)
 parser.add_argument('--input_shape', default=(224,224,3), type=tuple)
 # parser.add_argument('--classes_path', default='../data/hmdb51_classes.txt', type=str)
@@ -93,6 +94,17 @@ def main(args):
     else:
         raise ValueError('--mode [train | infer]')
 
+def infer(args, image_dict, base_model, model):
+    for i, image in enumerate(image_dict['infer']):
+        if i >= 10: break
+        image_path = os.path.join(args.image_dir, image)
+        raw_rgbs = cv2.resize(cv2.imread(image_path), args.input_shape[:2])
+        raw_rgbs = np.expand_dims(raw_rgbs, axis=0)
+        pred_rgbs = model.predict(raw_rgbs)
+        composed = np.concatenate((raw_rgbs[0], pred_rgbs[0]), axis=1)
+        composed = composed.astype(np.uint8)
+        cv2.imwrite(os.path.join(args.output_dir, '%d.png'%(i+1)), composed)
+
 def train(args, image_dict, base_model, model):
     save_model_path = os.path.join(args.logdir, "trained_models")
     if not os.path.exists(save_model_path): os.makedirs(save_model_path)
@@ -102,7 +114,7 @@ def train(args, image_dict, base_model, model):
     csv_logger = CSVLogger(filename=os.path.join(args.logdir, "history.log"))
     checkpointer = ModelCheckpoint(
         filepath=os.path.join(save_model_path, "epoch_{epoch:04d}--trainloss_{loss:.5f}--valloss_{val_loss:.5f}.hdf5"),
-        period=2)
+        period=1)
     tensorboard = TensorBoard(log_dir=os.path.join(args.logdir, "tf_logs"), write_images=True)
 
     # train on generator
@@ -142,5 +154,8 @@ def train(args, image_dict, base_model, model):
                               )
 
 if __name__ == '__main__': 
-    with tf.device('/cpu:0'):
+    if args.device == 'cpu':
+        with tf.device('/cpu:0'):
+            main(args)
+    else:
         main(args)

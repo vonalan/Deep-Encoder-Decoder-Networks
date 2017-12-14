@@ -23,6 +23,7 @@ import data_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
+parser.add_argument('--device', default='gpu', type=str)
 parser.add_argument('--base_model', default='inception_v3', type=str)
 parser.add_argument('--input_shape', default=(299,299,3), type=tuple)
 parser.add_argument('--classes_path', default='../data/hmdb51_classes.txt', type=str)
@@ -48,6 +49,12 @@ def build(classes):
     for i, layer in enumerate(model.layers):
         print(i, layer.name)
     return base_model, model
+
+def valid(args, classes, base_model, model):
+    pass
+
+def infer(args, classes, base_model, model):
+    pass
 
 def train(args, classes, base_model, model):
     save_model_path = os.path.join(args.logdir, "trained_models")
@@ -83,7 +90,7 @@ def train(args, classes, base_model, model):
     # step 02
     for i, layer in enumerate(base_model.layers):
         layer.trainable=True
-    model.compile(optimizer=SGD(lr=1e-4, momentum=1e-9), loss=categorical_crossentropy, metrics=[categorical_accuracy])
+    model.compile(optimizer=SGD(lr=1e-4, momentum=9e-1), loss=categorical_crossentropy, metrics=[categorical_accuracy])
     model.fit_generator(generator=train_generator,
                               steps_per_epoch=args.train_steps,
                               epochs=args.epoches,
@@ -110,4 +117,8 @@ def main(args):
         raise ValueError('--mode [train | infer]')
 
 if __name__ == '__main__': 
-    main(args) 
+    if args.device == 'cpu':
+        with tf.device('/cpu:0'):
+            main(args)
+    else:
+        main(args)

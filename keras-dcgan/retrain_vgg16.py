@@ -23,6 +23,7 @@ import data_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
+parser.add_argument('--device', default='gpu', type=str)
 parser.add_argument('--base_model', default='vgg16', type=str)
 parser.add_argument('--input_shape', default=(224,224,3), type=tuple)
 parser.add_argument('--classes_path', default='../data/hmdb51_classes.txt', type=str)
@@ -107,4 +108,8 @@ def main(args):
         raise ValueError('--mode [train | infer]')
 
 if __name__ == '__main__': 
-    main(args) 
+    if args.device == 'cpu':
+        with tf.device('/cpu:0'):
+            main(args)
+    else:
+        main(args)
