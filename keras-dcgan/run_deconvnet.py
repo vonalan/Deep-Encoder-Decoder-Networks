@@ -75,9 +75,8 @@ def iter_mini_batches(args, image_list, batch_size=4, shuffle=True):
             yield image_batch, image_batch
 
 def build(args):
-    base_model, model = deconvnet.vgg16_convnet(weights='imagenet')
-    model = deconvnet.vgg16_deconvnet(model)
-    for i, layer in enumerate(model.layers): 
+    base_model, model = deconvnet.deconvnet_without_mask(weights=None)
+    for i, layer in enumerate(model.layers):
         print(i, layer.name)
     return base_model, model
 
@@ -122,8 +121,8 @@ def train(args, image_dict, base_model, model):
     valid_generator = iter_mini_batches(args, image_dict['valid'], batch_size=args.batch_size)
 
     # step 01
-    for i, layer in enumerate(base_model.layers):
-        layer.trainable = False
+    # for i, layer in enumerate(base_model.layers):
+    #     layer.trainable = False
     optimizer = SGD(lr=1e-5, momentum=9e-1, decay=1e-6)
     model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_logarithmic_error])
     model.fit_generator(generator=train_generator,
@@ -137,21 +136,21 @@ def train(args, image_dict, base_model, model):
                               callbacks=[csv_logger, checkpointer, tensorboard]
                               )
 
-    # step 02
-    for i, layer in enumerate(base_model.layers):
-        layer.trainable=True
-    optimizer = SGD(lr=1e-5, momentum=9e-1, decay=1e-6)
-    model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_logarithmic_error])
-    model.fit_generator(generator=train_generator,
-                              steps_per_epoch=args.train_steps,
-                              epochs=args.epoches,
-                              validation_data=valid_generator,
-                              validation_steps=args.val_steps,
-                              max_q_size=100, # 100
-                              workers=1, # num_gpus/num_cpus
-                            #   pickle_safe=True,
-                              callbacks=[csv_logger, checkpointer, tensorboard]
-                              )
+    # # step 02
+    # for i, layer in enumerate(base_model.layers):
+    #     layer.trainable=True
+    # optimizer = SGD(lr=1e-5, momentum=9e-1, decay=1e-6)
+    # model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_logarithmic_error])
+    # model.fit_generator(generator=train_generator,
+    #                           steps_per_epoch=args.train_steps,
+    #                           epochs=args.epoches,
+    #                           validation_data=valid_generator,
+    #                           validation_steps=args.val_steps,
+    #                           max_q_size=100, # 100
+    #                           workers=1, # num_gpus/num_cpus
+    #                         #   pickle_safe=True,
+    #                           callbacks=[csv_logger, checkpointer, tensorboard]
+    #                           )
 
 if __name__ == '__main__': 
     if args.device == 'cpu':

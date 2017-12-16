@@ -104,7 +104,7 @@ def deconvnet():
 
     return modelD
 
-def deconvnet_without_mask():
+def deconvnet_without_mask(weights=None):
     inputData = Input(batch_shape=(None, 224, 224, 3))
     # First Layer
     conv1_1 = Conv2D(64, kernel_size=(3, 3), activation='relu', padding='same', name='block1_conv1')(inputData)
@@ -134,61 +134,48 @@ def deconvnet_without_mask():
     # 1x1
     fc7 = Conv2D(4096, kernel_size=(1, 1), activation='relu')(fc6)
 
-    fc6_deconv = Conv2DTranspose(512, kernel_size=(7, 7), activation='relu')(fc7)
-    # 7x7
+    fc6_deconv = Conv2DTranspose(512,kernel_size=(7,7),activation='relu')(fc7)
+    #7x7
     # m5 = Mask(conv5_3)
     # unpool5 = Unpooling2D(m5,fc6_deconv)
     unpool5 = UpSampling2D()(fc6_deconv)
-    # 14x14
-    deconv5_1 = Conv2DTranspose(512, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock5_conv3')(
-        unpool5)
-    deconv5_2 = Conv2DTranspose(512, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock5_conv2')(
-        deconv5_1)
-    deconv5_3 = Conv2DTranspose(512, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock5_conv1')(
-        deconv5_2)
+    #14x14
+    deconv5_1 = Conv2DTranspose(512,kernel_size=(3,3),padding='same',activation='relu', name='Xblock5_conv3')(unpool5)
+    deconv5_2 = Conv2DTranspose(512,kernel_size=(3,3),padding='same',activation='relu', name='Xblock5_conv2')(deconv5_1)
+    deconv5_3 = Conv2DTranspose(512,kernel_size=(3,3),padding='same',activation='relu', name='Xblock5_conv1')(deconv5_2)
     # m4 = Mask(conv4_3)
     # unpool4 = Unpooling2D(m4,deconv5_3)
     unpool4 = UpSampling2D()(deconv5_3)
-    # 28x28
-    deconv4_1 = Conv2DTranspose(512, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock4_conv3')(
-        unpool4)
-    deconv4_2 = Conv2DTranspose(512, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock4_conv2')(
-        deconv4_1)
-    deconv4_3 = Conv2DTranspose(256, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock4_conv1')(
-        deconv4_2)
+    #28x28
+    deconv4_1 = Conv2DTranspose(512,kernel_size=(3,3),padding='same',activation='relu', name='Xblock4_conv3')(unpool4)
+    deconv4_2 = Conv2DTranspose(512,kernel_size=(3,3),padding='same',activation='relu', name='Xblock4_conv2')(deconv4_1)
+    deconv4_3 = Conv2DTranspose(256,kernel_size=(3,3),padding='same',activation='relu', name='Xblock4_conv1')(deconv4_2)
     # m3 = Mask(conv3_3)
     # unpool3 = Unpooling2D(m3,deconv4_3)
     unpool3 = UpSampling2D()(deconv4_3)
-    # 56x56
-    deconv3_1 = Conv2DTranspose(256, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock3_conv3')(
-        unpool3)
-    deconv3_2 = Conv2DTranspose(256, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock3_conv2')(
-        deconv3_1)
-    deconv3_3 = Conv2DTranspose(128, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock3_conv1')(
-        deconv3_2)
+    #56x56
+    deconv3_1 = Conv2DTranspose(256,kernel_size=(3,3),padding='same',activation='relu', name='Xblock3_conv3')(unpool3)
+    deconv3_2 = Conv2DTranspose(256,kernel_size=(3,3),padding='same',activation='relu', name='Xblock3_conv2')(deconv3_1)
+    deconv3_3 = Conv2DTranspose(128,kernel_size=(3,3),padding='same',activation='relu', name='Xblock3_conv1')(deconv3_2)
     # m2 = Mask(conv2_2)
     # unpool2 = Unpooling2D(m2,deconv3_3)
     unpool2 = UpSampling2D()(deconv3_3)
-    # 112x112
-    deconv2_1 = Conv2DTranspose(128, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock2_conv2')(
-        unpool2)
-    deconv2_2 = Conv2DTranspose(64, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock2_conv1')(
-        deconv2_1)
+    #112x112
+    deconv2_1 = Conv2DTranspose(128,kernel_size=(3,3),padding='same',activation='relu', name='Xblock2_conv2')(unpool2)
+    deconv2_2 = Conv2DTranspose(64,kernel_size=(3,3),padding='same',activation='relu', name='Xblock2_conv1')(deconv2_1)
     # m1 = Mask(conv1_2)
     # unpool1 = Unpooling2D(m1,deconv2_2)
     unpool1 = UpSampling2D()(deconv2_2)
-    # 224x224
-    deconv1_1 = Conv2DTranspose(64, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock1_conv2')(
-        unpool1)
-    deconv1_2 = Conv2DTranspose(3, kernel_size=(3, 3), padding='same', activation='relu', name='Xblock1_conv1')(
-        deconv1_1)
+    #224x224
+    deconv1_1 = Conv2DTranspose(64,kernel_size=(3,3),padding='same',activation='relu', name='Xblock1_conv2')(unpool1)
+    deconv1_2 = Conv2DTranspose(3,kernel_size=(3,3),padding='same',activation='relu', name='Xblock1_conv1')(deconv1_1)
     # score_fr = Conv2D(3,kernel_size=(1,1),padding='same')(deconv1_2)
-    # pred32 = Dense(21,activation='softmax')(score_fr)
+    #pred32 = Dense(21,activation='softmax')(score_fr)
     modelD = Model(inputs=inputData, outputs=[deconv1_2])
     # modelD.load_weights('/home/afagnani/keras-deconvnet/fcn.h5', by_name=True)
     # modelD.load_weights('deconv_weights.h5', by_name=True)
 
-    return modelD
+    return None, modelD
 
 def vgg16_convnet(weights=None):
     base_model = VGG16(include_top=False, weights=weights)
