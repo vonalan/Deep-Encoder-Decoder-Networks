@@ -36,7 +36,7 @@ def Unpooling2D(mask,x):
     x = UpSampling2D()(x)
     return Multiply()([mask, x])
 
-def deconvnet():
+def deconvnet(weights=None):
     inputData = Input(batch_shape=(None,224,224,3))
     #First Layer
     conv1_1 = Conv2D(64,kernel_size=(3,3),activation='relu',padding='same', name='block1_conv1')(inputData)
@@ -102,7 +102,7 @@ def deconvnet():
     # modelD.load_weights('/home/afagnani/keras-deconvnet/fcn.h5', by_name=True)
     # modelD.load_weights('deconv_weights.h5', by_name=True)
 
-    return modelD
+    return None, modelD
 
 def deconvnet_without_mask(weights=None):
     inputData = Input(batch_shape=(None, 224, 224, 3))

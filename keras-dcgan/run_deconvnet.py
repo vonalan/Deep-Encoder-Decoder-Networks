@@ -75,7 +75,7 @@ def iter_mini_batches(args, image_list, batch_size=4, shuffle=True):
             yield image_batch, image_batch
 
 def build(args):
-    base_model, model = deconvnet.deconvnet_without_mask(weights=None)
+    base_model, model = deconvnet.deconvnet(weights=None)
     for i, layer in enumerate(model.layers):
         print(i, layer.name)
     return base_model, model
