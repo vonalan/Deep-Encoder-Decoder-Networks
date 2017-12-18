@@ -138,5 +138,28 @@ def iter_mini_batches(args, category, num_classes, batch_size=4, shuffle=True):
                 # print(image_batch[idx].shape, label_batch[idx])
             yield image_batch, label_batch
 
+def iter_mini_batches_for_deconvnet(args, category, num_classes, batch_size=4, shuffle=True):
+    # TODO: shuffle, resize, crop, flip, distort, blur, ...
+    video_dicts = create_video_dicts(args.video_dir, args.split_dir, sround=args.split_round)
+    _, _, image_list = create_image_list(args.image_dir, video_dicts, category)
+
+    while True:
+        if shuffle:
+            random.seed()
+            random.shuffle(image_list)
+
+        num_batchs = int(math.ceil(len(image_list)/float(batch_size)))
+        for batch in range(num_batchs):
+            sidx = max(0, batch * batch_size)
+            eidx = min(len(image_list), (batch + 1) * batch_size)
+            num_cur_batch = eidx - sidx
+            image_batch = np.zeros(tuple([batch_size] + list(args.input_shape)))
+            label_batch = np.zeros(tuple([batch_size] + [num_classes]))
+            for idx in range(num_cur_batch):
+                image_batch[idx] = cv2.resize(cv2.imread(image_list[sidx + idx][0]), args.input_shape[:2])
+                label_batch[idx][image_list[sidx + idx][1]] = 1
+                # print(image_batch[idx].shape, label_batch[idx])
+            yield image_batch, image_batch
+
 if __name__ == "__main__":
     pass
