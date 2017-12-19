@@ -15,7 +15,8 @@ from keras.losses import mean_squared_error, mean_squared_logarithmic_error
 from keras.metrics import mean_squared_error, mean_squared_logarithmic_error
 from keras.callbacks import ModelCheckpoint, CSVLogger, LearningRateScheduler, TensorBoard, ReduceLROnPlateau
 
-import deconvnet as deconvnet
+# import deconvnet as deconvnet
+import dcgan as deconvnet
 # import utils
 
 parser = argparse.ArgumentParser()
@@ -75,7 +76,8 @@ def iter_mini_batches(args, image_list, batch_size=4, shuffle=True):
             yield image_batch, image_batch
 
 def build(args):
-    base_model, model = deconvnet.deconvnet(weights=None)
+    # base_model, model = deconvnet.deconvnet(weights=None)
+    base_model, model = deconvnet.deconvnet()
     for i, layer in enumerate(model.layers):
         print(i, layer.name)
     return base_model, model

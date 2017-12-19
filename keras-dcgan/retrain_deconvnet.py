@@ -39,10 +39,11 @@ parser.add_argument('--train_steps', default=2000, type=int)
 parser.add_argument('--val_steps', default=500, type=int)
 args, _ = parser.parse_known_args()
 
-import deconvnet
+# import deconvnet
+import dcgan
 
 def build(classes):
-    base_model, model = deconvnet.deconvnet()
+    base_model, model = dcgan.deconvnet()
     for i, layer in enumerate(model.layers):
         print(i, layer.name)
     return base_model, model

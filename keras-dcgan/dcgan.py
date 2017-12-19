@@ -1,94 +1,267 @@
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import Reshape
-from keras.layers.core import Activation
-from keras.layers.normalization import BatchNormalization
-from keras.layers.convolutional import UpSampling2D
-from keras.layers.convolutional import Conv2D, MaxPooling2D
-from keras.layers.core import Flatten
+from keras.models import Model
+from keras.layers import Input
+from keras.layers.core import Flatten, Reshape, Dense
+from keras.layers.convolutional import Conv2D, Conv2DTranspose, MaxPooling2D, UpSampling2D
+# from keras.layers.normalization import BatchNormalization as BN
+# from keras.layers.noise import GaussianNoise as GN
 from keras.optimizers import SGD
-from keras.datasets import mnist
-import numpy as np
-from PIL import Image
-import argparse
-import math
 
+# TODO: KERAS_DCGAN_ORIGIN
 
-def generator_model():
-    model = Sequential()
-    model.add(Dense(input_dim=100, output_dim=1024))
-    model.add(Activation('tanh'))
-    model.add(Dense(128*7*7))
-    model.add(BatchNormalization())
-    model.add(Activation('tanh'))
-    model.add(Reshape((7, 7, 128), input_shape=(128*7*7,)))
-    model.add(UpSampling2D(size=(2, 2)))
-    model.add(Conv2D(64, (5, 5), padding='same'))
-    model.add(Activation('tanh'))
-    model.add(UpSampling2D(size=(2, 2)))
-    model.add(Conv2D(1, (5, 5), padding='same'))
-    model.add(Activation('tanh'))
+def generator_model(inputs):
+    # replace unpool layer with stride convolutional layer
+
+    # Input
+    # inputs = Input(shape=(1,))
+    # inputs = Input(shape=(1024,))
+    x = inputs
+
+    # FC
+    # TODO: activation functions
+    # x = Dense(1024, activation='tanh')(x)
+    x = Dense((64 * 7 * 7), activation='relu')(x)
+    x = Reshape((7,7,64))(x) # not (64,7,7)
+
+    # FCN
+    # TODO: is fc_8 necessary?
+    # x = Conv2D(64, (7, 7), strides=(1, 1), activation='relu', padding='same', name='fc_6')(x)
+    # x = Conv2D(64, (1, 1), strides=(1, 1), activation='relu', padding='same', name='fc_7')(x)
+    x = Conv2DTranspose(64, (7, 7), strides=(1, 1), activation='relu', padding='same', name='fc_8')(x)
+
+    # XBlock 5
+    x = Conv2DTranspose(64, (3, 3), strides=(2, 2), activation='relu', padding='same', name='deconv5_3')(x)
+    x = Conv2D(64, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv5_2')(x)
+    x = Conv2D(64, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv5_1')(x)
+
+    # XBlock 4
+    x = Conv2DTranspose(64, (3, 3), strides=(2, 2), activation='relu', padding='same', name='deconv4_3')(x)
+    x = Conv2D(64, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv4_2')(x)
+    x = Conv2D(64, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv4_1')(x)
+
+    # XBlock 3
+    x = Conv2DTranspose(64, (3, 3), strides=(2, 2), activation='relu', padding='same', name='deconv3_3')(x)
+    x = Conv2D(64, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv3_2')(x)
+    x = Conv2D(64, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv3_1')(x)
+
+    # XBlock 2
+    x = Conv2DTranspose(64, (3, 3), strides=(2, 2), activation='relu', padding='same', name='deconv2_2')(x)
+    # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv2_1')(x)
+    x = Conv2D(64, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv2_1')(x)
+
+    # XBlock 1
+    x = Conv2DTranspose(64, (3, 3), strides=(2, 2), activation='relu', padding='same', name='deconv1_2')(x)
+    # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv1_1')(x)
+    x = Conv2D(3, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv1_1')(x)
+
+    # Output
+    outputs = x
+
+    # Model
+    model = Model(inputs=[inputs], outputs=[outputs])
     return model
 
+def discrimator_model(inputs):
+    # replace pool layer with convolutional layer
 
-def discriminator_model():
-    model = Sequential()
-    model.add(
-            Conv2D(64, (5, 5),
-            padding='same',
-            input_shape=(28, 28, 1))
-            )
-    model.add(Activation('tanh'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(128, (5, 5)))
-    model.add(Activation('tanh'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Flatten())
-    model.add(Dense(1024))
-    model.add(Activation('tanh'))
-    model.add(Dense(1))
-    model.add(Activation('sigmoid'))
+    # Input
+    # inputs = Input(shape=(224,224,3))
+    x = inputs
+
+    # Block 1
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv1_1')(x)
+    # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv1_1')(x)
+    x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv1_2')(x) # pool
+
+    # Block 2
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv2_1')(x)
+    # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv1_1')(x)
+    x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv2_2')(x)
+
+    # Block 3
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv3_1')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv3_2')(x)
+    x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv3_3')(x)
+
+    # Block 4
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv4_1')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv4_2')(x)
+    x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv4_3')(x)
+
+    # Block 5
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv5_1')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv5_2')(x)
+    x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv5_3')(x)
+
+    # FCN
+    # TODO: is fc_8 necessary?
+    x = Conv2D(64, (7,7), strides=(1,1), activation='relu', padding='same', name='fc_6')(x)
+    # x = Conv2D(64, (1,1), strides=(1,1), activation='relu', padding='same', name='fc_7')(x)
+    # x = Conv2DTranspose(64, (7,7), strides=(1,1), activation='relu', padding='same', name='fc_8')(x)
+
+    # FC
+    x = Flatten()(x)
+    x = Dense(1024, activation='relu')(x)
+    x = Dense(1, activation='sigmoid')(x)
+
+    # outputs
+    outputs = x
+    model = Model(inputs=[inputs], outputs=[outputs])
     return model
 
+def deconvnet(inputs):
+    # replace pool layer with convolutional layer
+    # replace unpool layer with stride convolutional layer
 
-def generator_containing_discriminator(g, d):
-    model = Sequential()
-    model.add(g)
-    d.trainable = False
-    model.add(d)
+    # Input
+    # inputs = Input(shape=(224,224,3))
+    x = inputs
+
+    # Block 1
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv1_1')(x)
+    # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv1_1')(x)
+    x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv1_2')(x) # pool
+
+    # Block 2
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv2_1')(x)
+    # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv1_1')(x)
+    x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv2_2')(x)
+
+    # Block 3
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv3_1')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv3_2')(x)
+    x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv3_3')(x)
+
+    # Block 4
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv4_1')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv4_2')(x)
+    x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv4_3')(x)
+
+    # Block 5
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv5_1')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='conv5_2')(x)
+    x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv5_3')(x)
+
+    # FCN
+    # TODO: is fc_8 necessary?
+    x = Conv2D(64, (7,7), strides=(1,1), activation='relu', padding='same', name='fc_6')(x)
+    x = Conv2D(64, (1,1), strides=(1,1), activation='relu', padding='same', name='fc_7')(x)
+    x = Conv2DTranspose(64, (7,7), strides=(1,1), activation='relu', padding='same', name='fc_8')(x)
+
+    # XBlock 5
+    x = Conv2DTranspose(64, (3,3), strides=(2,2), activation='relu', padding='same', name='deconv5_3')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv5_2')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv5_1')(x)
+
+    # XBlock 4
+    x = Conv2DTranspose(64, (3,3), strides=(2,2), activation='relu', padding='same', name='deconv4_3')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv4_2')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv4_1')(x)
+
+    # XBlock 3 
+    x = Conv2DTranspose(64, (3,3), strides=(2,2), activation='relu', padding='same', name='deconv3_3')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv3_2')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv3_1')(x)
+
+    # XBlock 2
+    x = Conv2DTranspose(64, (3,3), strides=(2,2), activation='relu', padding='same', name='deconv2_2')(x)
+    # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv2_1')(x)
+    x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv2_1')(x)
+
+    # XBlock 1
+    x = Conv2DTranspose(64, (3,3), strides=(2,2), activation='relu', padding='same', name='deconv1_2')(x)
+    # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv1_1')(x)
+    x = Conv2D(3, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv1_1')(x)
+
+    # Output
+    outputs = x
+    
+    # Model 
+    model = Model(inputs=[inputs], outputs=[outputs])
+    return None, model
+
+def test_generator(model):
+    import numpy as np
+    import cv2
+
+    zs = np.random.random((1024,))
+    zs = np.expand_dims(zs, axis=0)
+
+    ys = model.predict(zs)
+    print(ys.shape)
+
+    ys = (ys - ys.min()) / (ys.max() - ys.min())
+    ys = (ys * 255.0).astype(np.uint8)
+
+    ys = ys[0]
+    cv2.imwrite('hhh.jpg', ys)
+
+def test_deconvnet(model):
+    import os
+    import numpy as np
+    import cv2
+
+    image_dir = '../images/'
+    for i, image in enumerate(os.listdir(image_dir)):
+        if i > 10: break
+
+        raw_image = cv2.imread(os.path.join(image_dir, image))
+        raw_image = cv2.resize(raw_image, (224, 224))
+        raw_image = np.expand_dims(raw_image, axis=0)
+
+        pred_image = model.predict(raw_image)
+        pred_image = (pred_image - pred_image.min()) / (pred_image.max() - pred_image.min())
+        pred_image = (pred_image * 255.0).astype(np.uint8)
+
+        pred_image = pred_image[0]
+        cv2.imwrite('hhh_%d.jpg'%(i), pred_image)
+
+def test_discriminator(model): 
+    import os 
+    import numpy as np 
+    import cv2
+
+    image_dir = '../images/'
+    for i, image in enumerate(os.listdir(image_dir)): 
+        if i > 10: break
+
+        image = cv2.imread(os.path.join(image_dir, image))
+        image = cv2.resize(image, (224,224))
+        image = np.expand_dims(image, axis=0)
+
+        print(model.predict(image))
+
+def generator_containing_discriminator(inputs):
+    g = generator_model(inputs)
+    d = discrimator_model(g.outputs[0])
+    outputs = d.outputs[0]
+
+    for i, layer in enumerate(d.layers):
+        layer.trainable = False
+
+    model = Model(inputs=[inputs], outputs=[outputs])
     return model
-
-
-def combine_images(generated_images):
-    num = generated_images.shape[0]
-    width = int(math.sqrt(num))
-    height = int(math.ceil(float(num)/width))
-    shape = generated_images.shape[1:3]
-    image = np.zeros((height*shape[0], width*shape[1]),
-                     dtype=generated_images.dtype)
-    for index, img in enumerate(generated_images):
-        i = int(index/width)
-        j = index % width
-        image[i*shape[0]:(i+1)*shape[0], j*shape[1]:(j+1)*shape[1]] = \
-            img[:, :, 0]
-    return image
 
 
 def train(BATCH_SIZE):
-    (X_train, y_train), (X_test, y_test) = mnist.load_data()
-    X_train = (X_train.astype(np.float32) - 127.5)/127.5
-    X_train = X_train[:, :, :, None]
-    X_test = X_test[:, :, :, None]
-    # X_train = X_train.reshape((X_train.shape, 1) + X_train.shape[1:])
-    d = discriminator_model()
-    g = generator_model()
-    d_on_g = generator_containing_discriminator(g, d)
+    d = discrimator_model(Input(shape=(224,224,3)))
     d_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
+    d.compile(loss='binary_crossentropy', optimizer=d_optim)
+
+    g = generator_model(Input(shape=(1024,)))
     g_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     g.compile(loss='binary_crossentropy', optimizer="SGD")
+
+    d_on_g = generator_containing_discriminator(g, d)
     d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
-    d.trainable = True
     d.compile(loss='binary_crossentropy', optimizer=d_optim)
+
+    # d_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
+    # g_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
+    # g.compile(loss='binary_crossentropy', optimizer="SGD")
+    # d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
+    # d.trainable = True
+    # d.compile(loss='binary_crossentropy', optimizer=d_optim)
+
     for epoch in range(100):
         print("Epoch is", epoch)
         print("Number of batches", int(X_train.shape[0]/BATCH_SIZE))
@@ -114,49 +287,19 @@ def train(BATCH_SIZE):
                 g.save_weights('generator', True)
                 d.save_weights('discriminator', True)
 
-
-def generate(BATCH_SIZE, nice=False):
-    g = generator_model()
-    g.compile(loss='binary_crossentropy', optimizer="SGD")
-    g.load_weights('generator')
-    if nice:
-        d = discriminator_model()
-        d.compile(loss='binary_crossentropy', optimizer="SGD")
-        d.load_weights('discriminator')
-        noise = np.random.uniform(-1, 1, (BATCH_SIZE*20, 100))
-        generated_images = g.predict(noise, verbose=1)
-        d_pret = d.predict(generated_images, verbose=1)
-        index = np.arange(0, BATCH_SIZE*20)
-        index.resize((BATCH_SIZE*20, 1))
-        pre_with_index = list(np.append(d_pret, index, axis=1))
-        pre_with_index.sort(key=lambda x: x[0], reverse=True)
-        nice_images = np.zeros((BATCH_SIZE,) + generated_images.shape[1:3], dtype=np.float32)
-        nice_images = nice_images[:, :, :, None]
-        for i in range(BATCH_SIZE):
-            idx = int(pre_with_index[i][1])
-            nice_images[i, :, :, 0] = generated_images[idx, :, :, 0]
-        image = combine_images(nice_images)
-    else:
-        noise = np.random.uniform(-1, 1, (BATCH_SIZE, 100))
-        generated_images = g.predict(noise, verbose=1)
-        image = combine_images(generated_images)
-    image = image*127.5+127.5
-    Image.fromarray(image.astype(np.uint8)).save(
-        "generated_image.png")
-
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", type=str)
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--nice", dest="nice", action="store_true")
-    parser.set_defaults(nice=False)
-    args = parser.parse_args()
-    return args
+def generate():
+    pass
 
 if __name__ == "__main__":
-    args = get_args()
-    if args.mode == "train":
-        train(BATCH_SIZE=args.batch_size)
-    elif args.mode == "generate":
-        generate(BATCH_SIZE=args.batch_size, nice=args.nice)
+    model = discrimator()
+    for i, layer in enumerate(model.layers):
+        print(i, '---', layer.name, '---', layer.output_shape)
+    test_discriminator(model)
+
+    model = generator()
+    for i, layer in enumerate(model.layers):
+        print(i, '---', layer.name, '---', layer.output_shape)
+    test_generator(model)
+
+    model = deconvnet()
+    test_deconvnet(model)
