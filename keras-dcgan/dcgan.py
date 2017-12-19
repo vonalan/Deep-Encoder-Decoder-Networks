@@ -1,4 +1,4 @@
-from keras.models import Model
+from keras.models import Model, Sequential
 from keras.layers import Input
 from keras.layers.core import Flatten, Reshape, Dense
 from keras.layers.convolutional import Conv2D, Conv2DTranspose, MaxPooling2D, UpSampling2D
@@ -60,7 +60,7 @@ def generator_model(inputs):
     model = Model(inputs=[inputs], outputs=[outputs])
     return model
 
-def discrimator_model(inputs):
+def discriminator_model(inputs):
     # replace pool layer with convolutional layer
 
     # Input
@@ -193,7 +193,7 @@ def test_generator(model):
     ys = (ys * 255.0).astype(np.uint8)
 
     ys = ys[0]
-    cv2.imwrite('hhh.jpg', ys)
+    cv2.imwrite('../outputs/hhh.jpg', ys)
 
 def test_deconvnet(model):
     import os
@@ -213,7 +213,7 @@ def test_deconvnet(model):
         pred_image = (pred_image * 255.0).astype(np.uint8)
 
         pred_image = pred_image[0]
-        cv2.imwrite('hhh_%d.jpg'%(i), pred_image)
+        cv2.imwrite('../outputs/hhh_%d.jpg'%(i), pred_image)
 
 def test_discriminator(model): 
     import os 
@@ -230,30 +230,27 @@ def test_discriminator(model):
 
         print(model.predict(image))
 
-def generator_containing_discriminator(inputs):
-    g = generator_model(inputs)
-    d = discrimator_model(g.outputs[0])
-    outputs = d.outputs[0]
-
-    for i, layer in enumerate(d.layers):
-        layer.trainable = False
-
-    model = Model(inputs=[inputs], outputs=[outputs])
+def generator_containing_discriminator(generator, discriminator):
+    model = Sequential()
+    model.add(generator)
+    discriminator.trainable = False
+    model.add(discriminator)
     return model
 
+def iter_mini_batch(batch_size=4):
+    pass
 
 def train(BATCH_SIZE):
-    d = discrimator_model(Input(shape=(224,224,3)))
-    d_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
-    d.compile(loss='binary_crossentropy', optimizer=d_optim)
+    input_image_shape = (224,224,3)
+    input_noise_shape = (1024,)
 
-    g = generator_model(Input(shape=(1024,)))
-    g_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
-    g.compile(loss='binary_crossentropy', optimizer="SGD")
+    generator = generator_model(Input(shape=input_noise_shape))
+    discriminator = discriminator_model(Input(shape=input_image_shape))
+    model = generator_containing_discriminator(generator, discriminator)
 
-    d_on_g = generator_containing_discriminator(g, d)
-    d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
-    d.compile(loss='binary_crossentropy', optimizer=d_optim)
+    # d_on_g = generator_containing_discriminator(g, d)
+    # d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
+    # d.compile(loss='binary_crossentropy', optimizer=d_optim)
 
     # d_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     # g_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
@@ -262,11 +259,14 @@ def train(BATCH_SIZE):
     # d.trainable = True
     # d.compile(loss='binary_crossentropy', optimizer=d_optim)
 
-    for epoch in range(100):
-        print("Epoch is", epoch)
-        print("Number of batches", int(X_train.shape[0]/BATCH_SIZE))
+    num_train_epoches = 100
+    for epoch in range(num_train_epoches):
+        for raw_image_batch in iter_mini_batch():
+            noise = np.random.uniform(-1, 1, size=(BATCH_SIZE, 1024))
+            pred_image_batch = np.random.uniform()
+
         for index in range(int(X_train.shape[0]/BATCH_SIZE)):
-            noise = np.random.uniform(-1, 1, size=(BATCH_SIZE, 100))
+            noise = np.random.uniform(-1, 1, size=(BATCH_SIZE, 1024))
             image_batch = X_train[index*BATCH_SIZE:(index+1)*BATCH_SIZE]
             generated_images = g.predict(noise, verbose=0)
             if index % 20 == 0:
@@ -291,15 +291,20 @@ def generate():
     pass
 
 if __name__ == "__main__":
-    model = discrimator()
-    for i, layer in enumerate(model.layers):
-        print(i, '---', layer.name, '---', layer.output_shape)
-    test_discriminator(model)
+    input_image_shape = (224,224,3)
+    input_noise_shape = (1024,)
 
-    model = generator()
-    for i, layer in enumerate(model.layers):
-        print(i, '---', layer.name, '---', layer.output_shape)
-    test_generator(model)
+    generator = generator_model(Input(shape=input_noise_shape))
+    # for i, layer in enumerate(generator.layers):
+    #     print(i, '---', layer.name, '---', layer.output_shape)
+    # test_generator(model)
 
-    model = deconvnet()
-    test_deconvnet(model)
+    discriminator = discriminator_model(Input(shape=input_image_shape))
+    # for i, layer in enumerate(discriminator.layers):
+    #     print(i, '---', layer.name, '---', layer.output_shape)
+    # test_discriminator(model)
+
+    model = generator_containing_discriminator(generator, discriminator)
+    # for i, model in enumerate(model.layers):
+    #     for j, layer in enumerate(model.layers):
+    #         print(i, model.name, j, layer.name)
