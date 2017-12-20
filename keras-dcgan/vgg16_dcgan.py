@@ -236,6 +236,9 @@ def test_discriminator(model):
 
         print(model.predict(image))
 
+def generator_containing_discriminator_dev(generator, discriminator):
+    pass
+
 def generator_containing_discriminator(generator, discriminator):
     # TODO: substitute Sequential() with Model()
     model = Sequential()

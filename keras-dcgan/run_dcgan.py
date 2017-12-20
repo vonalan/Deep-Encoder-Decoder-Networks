@@ -104,6 +104,10 @@ def build(args):
 def main(args):
     generator, discriminator, mix_model = build(args)
 
+    # for i, model in enumerate(mix_model.layers):
+    #     for j, layer in enumerate(model.layers):
+    #         print(i, model.name, j, layer.name, layer.trainable)
+
     if args.init_weights_path is not None:
         mix_model.load_weights(args.init_weights_path, by_name=True)
 
@@ -160,17 +164,33 @@ def train(args, image_dict, generator, discriminator, mix_model):
 
             # train discriminator model
             discriminator.trainable = True
-            # generator.trainable= False
+            generator.trainable= False
+            ''''''
+            for i, model in enumerate(mix_model.layers):
+                for j, layer in enumerate(model.layers):
+                    print(i, model.name, j, layer.name, layer.trainable)
+            for j, layer in enumerate(generator.layers):
+                print(j, layer.name, layer.trainable)
+            for j, layer in enumerate(discriminator.layers):
+                    print(j, layer.name, layer.trainable)
+            ''''''
             optimizer = SGD(lr=5e-4, momentum=9e-1, nesterov=True)
             discriminator.compile(optimizer=optimizer, loss=binary_crossentropy, metrics=[binary_crossentropy])
 
+            print((discriminator.layers[-5].get_weights())[0][0][0][0][:5])
             input_batch = np.concatenate((raw_image_batch, gen_image_batch), axis=0)
             label_batch = raw_image_batch.shape[0] * [1] + gen_image_batch.shape[0] * [0] # !!! tf.one_like() | tf.zero_like()
             d_loss, _ = discriminator.train_on_batch(input_batch, label_batch)
+            print((discriminator.layers[-5].get_weights())[0][0][0][0][:5])
 
             # train generator model, error propagates back through discriminator
-            discriminator.trainable = False
-            # generator.trainable = True
+            discriminator.trainable = True
+            generator.trainable = True
+            ''''''
+            for i, model in enumerate(mix_model.layers):
+                for j, layer in enumerate(model.layers):
+                    print(i, model.name, j, layer.name, layer.trainable)
+            ''''''
             optimizer = SGD(lr=5e-4, momentum=9e-1, nesterov=True)
             mix_model.compile(optimizer=optimizer, loss=binary_crossentropy, metrics=[binary_crossentropy])
 
@@ -179,9 +199,11 @@ def train(args, image_dict, generator, discriminator, mix_model):
                 # TODO: sigmoid
                 input_batch = np.random.uniform(0, 1, size=(args.batch_size, 1024))
                 label_batch = input_batch.shape[0] * [1] # !!! tf.one_like() | tf.zero_like()
-                pred_label = mix_model.predict(input_batch)
-                print(pred_label.tolist())
                 loss, _ = mix_model.train_on_batch(input_batch, label_batch)
+                # print((discriminator.layers[-5].get_weights())[0][0][0][0][:5])
+                print((generator.layers[-5].get_weights())[0][0][0][0][:5])
+                # pred_label = mix_model.predict(input_batch)
+                # print(pred_label.tolist(), loss)
                 g_loss += loss
             g_loss = g_loss / 10
             print('epoch: %d, batch: %d, d_loss: %.8f, g_loss_: %.8f' % (epoch, total_batch_index, d_loss, g_loss))
