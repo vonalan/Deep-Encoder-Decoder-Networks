@@ -175,7 +175,7 @@ def train(args, image_dict, generator, discriminator, mix_model):
             mix_model.compile(optimizer=optimizer, loss=binary_crossentropy, metrics=[binary_crossentropy])
 
             g_loss = 0.0
-            for i in range(3):
+            for i in range(10):
                 # TODO: sigmoid
                 input_batch = np.random.uniform(0, 1, size=(args.batch_size, 1024))
                 label_batch = input_batch.shape[0] * [1] # !!! tf.one_like() | tf.zero_like()
@@ -183,7 +183,7 @@ def train(args, image_dict, generator, discriminator, mix_model):
                 print(pred_label.tolist())
                 loss, _ = mix_model.train_on_batch(input_batch, label_batch)
                 g_loss += loss
-            g_loss = g_loss / 3
+            g_loss = g_loss / 10
             print('epoch: %d, batch: %d, d_loss: %.8f, g_loss_: %.8f' % (epoch, total_batch_index, d_loss, g_loss))
 
         if epoch % 10 == 0:
