@@ -95,14 +95,46 @@ def iter_mini_batches_for_deconvnet(args, image_list, batch_size=4, shuffle=True
                 # print(image_batch[idx].shape, label_batch[idx])
             yield batch, image_batch, image_batch
 
-def build(args):
-    generator = dcgan.generator_model(Input(shape=args.input_noise_shape))
-    discriminator = dcgan.discriminator_model(Input(shape=args.input_image_shape))
-    model = dcgan.generator_containing_discriminator(generator, discriminator)
-    return generator, discriminator, model
+# def build(args):
+#     generator = dcgan.generator_model(Input(shape=args.input_noise_shape))
+#     discriminator = dcgan.discriminator_model(Input(shape=args.input_image_shape))
+#     model = dcgan.generator_containing_discriminator(generator, discriminator)
+#     return generator, discriminator, model
+
+def build_models(args):
+    input_noise = Input(shape=args.input_noise_shape)
+    input_image = Input(shape=args.input_image_shape)
+
+    gen_output = dcgan.generator_model(input_noise)
+    dis_output = dcgan.discriminator_model(input_image)
+    mix_output = dcgan.discriminator_model(gen_output)
+
+    generator = Model(input_noise, gen_output)
+    discriminator = Model(input_image, dis_output) # d_loss
+    mix_model = Model(input_noise, mix_output) # g_loss
+
+    ''''''
+    for i, layer in enumerate(discriminator.layers):
+        layer.trainable = False
+    for i, layer in enumerate(generator.layers):
+        layer.trainable = False
+    for j, layer in enumerate(mix_model.layers):
+        print(j, layer.name, layer.trainable)
+    ''''''
+
+    ''''''
+    for i, layer in enumerate(discriminator.layers):
+        layer.trainable = False
+    for i, layer in enumerate(generator.layers):
+        layer.trainable = True
+    for j, layer in enumerate(mix_model.layers):
+        print(j, layer.name, layer.trainable)
+    ''''''
+
+    return generator, discriminator, mix_model
 
 def main(args):
-    generator, discriminator, mix_model = build(args)
+    generator, discriminator, mix_model = build_models(args)
 
     # for i, model in enumerate(mix_model.layers):
     #     for j, layer in enumerate(model.layers):
@@ -165,15 +197,7 @@ def train(args, image_dict, generator, discriminator, mix_model):
             # train discriminator model
             discriminator.trainable = True
             generator.trainable= False
-            ''''''
-            for i, model in enumerate(mix_model.layers):
-                for j, layer in enumerate(model.layers):
-                    print(i, model.name, j, layer.name, layer.trainable)
-            for j, layer in enumerate(generator.layers):
-                print(j, layer.name, layer.trainable)
-            for j, layer in enumerate(discriminator.layers):
-                    print(j, layer.name, layer.trainable)
-            ''''''
+            
             optimizer = SGD(lr=5e-4, momentum=9e-1, nesterov=True)
             discriminator.compile(optimizer=optimizer, loss=binary_crossentropy, metrics=[binary_crossentropy])
 
@@ -186,11 +210,6 @@ def train(args, image_dict, generator, discriminator, mix_model):
             # train generator model, error propagates back through discriminator
             discriminator.trainable = True
             generator.trainable = True
-            ''''''
-            for i, model in enumerate(mix_model.layers):
-                for j, layer in enumerate(model.layers):
-                    print(i, model.name, j, layer.name, layer.trainable)
-            ''''''
             optimizer = SGD(lr=5e-4, momentum=9e-1, nesterov=True)
             mix_model.compile(optimizer=optimizer, loss=binary_crossentropy, metrics=[binary_crossentropy])
 
@@ -213,8 +232,9 @@ def train(args, image_dict, generator, discriminator, mix_model):
             pass
 
 if __name__ == '__main__': 
-    if args.device == 'cpu':
-        with tf.device('/cpu:0'):
-            main(args)
-    else:
-        main(args)
+    # if args.device == 'cpu':
+    #     with tf.device('/cpu:0'):
+    #         main(args)
+    # else:
+    #     main(args)
+    build_models(args)

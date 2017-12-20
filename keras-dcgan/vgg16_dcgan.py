@@ -62,8 +62,9 @@ def generator_model(inputs):
     outputs = x
 
     # Model
-    model = Model(inputs=[inputs], outputs=[outputs], name='generator')
-    return model
+    # model = Model(inputs=[inputs], outputs=[outputs], name='generator')
+    # return model
+    return outputs
 
 def discriminator_model(inputs):
     # replace pool layer with convolutional layer
@@ -111,8 +112,9 @@ def discriminator_model(inputs):
 
     # outputs
     outputs = x
-    model = Model(inputs=[inputs], outputs=[outputs], name='discriminator')
-    return model
+    # model = Model(inputs=[inputs], outputs=[outputs], name='discriminator')
+    # return model
+    return outputs
 
 def deconvnet(inputs):
     # replace pool layer with convolutional layer
