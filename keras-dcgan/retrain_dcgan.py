@@ -132,7 +132,7 @@ def train(args, image_dict, base_model, model):
                               validation_steps=args.val_steps,
                               max_q_size=100, # 100
                               workers=1, # num_gpus/num_cpus
-                            #   pickle_safe=True,
+                              # pickle_safe=True,
                               callbacks=[csv_logger, checkpointer, tensorboard]
                               )
 
