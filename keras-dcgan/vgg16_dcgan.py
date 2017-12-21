@@ -10,7 +10,7 @@ from keras.optimizers import SGD
 
 # TODO: KERAS_DCGAN_ORIGIN
 
-def generator_model(inputs):
+def create_generator_model(inputs):
     # replace unpool layer with stride convolutional layer
 
     # Input
@@ -62,11 +62,11 @@ def generator_model(inputs):
     outputs = x
 
     # Model
-    # model = Model(inputs=[inputs], outputs=[outputs], name='generator')
-    # return model
-    return outputs
+    model = Model(inputs=[inputs], outputs=[outputs], name='generator')
+    return model
+    # return outputs
 
-def discriminator_model(inputs):
+def create_discriminator_model(inputs):
     # replace pool layer with convolutional layer
 
     # Input
@@ -112,9 +112,9 @@ def discriminator_model(inputs):
 
     # outputs
     outputs = x
-    # model = Model(inputs=[inputs], outputs=[outputs], name='discriminator')
-    # return model
-    return outputs
+    model = Model(inputs=[inputs], outputs=[outputs], name='discriminator')
+    return model
+    # return outputs
 
 def deconvnet(inputs):
     # replace pool layer with convolutional layer

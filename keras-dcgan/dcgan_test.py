@@ -82,6 +82,10 @@ def train(BATCH_SIZE):
     d = discriminator_model()
     g = generator_model()
     d_on_g = generator_containing_discriminator(g, d)
+
+    for i, layer in enumerate(d_on_g.layers):
+        print(i, layer)
+
     d_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     g_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     g.compile(loss='binary_crossentropy', optimizer="SGD")
@@ -153,8 +157,9 @@ def get_args():
     return args
 
 if __name__ == "__main__":
-    args = get_args()
-    if args.mode == "train":
-        train(BATCH_SIZE=args.batch_size)
-    elif args.mode == "generate":
-        generate(BATCH_SIZE=args.batch_size, nice=args.nice)
+    # args = get_args()
+    # if args.mode == "train":
+    #     train(BATCH_SIZE=args.batch_size)
+    # elif args.mode == "generate":
+    #     generate(BATCH_SIZE=args.batch_size, nice=args.nice)
+    train(4)
