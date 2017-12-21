@@ -1,6 +1,6 @@
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.layers import Reshape
+from keras.layers import Reshape, Input
 from keras.layers.core import Activation
 from keras.layers.normalization import BatchNormalization
 from keras.layers.convolutional import UpSampling2D
@@ -26,7 +26,7 @@ def generator_model():
     model.add(Conv2D(64, (5, 5), padding='same'))
     model.add(Activation('tanh'))
     model.add(UpSampling2D(size=(2, 2)))
-    model.add(Conv2D(1, (5, 5), padding='same'))
+    model.add(Conv2D(3, (5, 5), padding='same'))
     model.add(Activation('tanh'))
     return model
 
@@ -36,7 +36,7 @@ def discriminator_model():
     model.add(
             Conv2D(64, (5, 5),
             padding='same',
-            input_shape=(28, 28, 1))
+            input_shape=(28, 28, 3))
             )
     model.add(Activation('tanh'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -73,17 +73,32 @@ def combine_images(generated_images):
             img[:, :, 0]
     return image
 
+import os
+import vgg16_dcgan as dcgan
+
+image_dir = '../images'
+image_list = os.listdir(image_dir)
+images = np.zeros((len(image_list), 224, 224, 3))
+for i, image in enumerate(image_list):
+    image_path = os.path.join(image_dir, image)
+    images[i] = np.array(Image.open(image_path).resize((224,224)))
+print(images[0,0,0,:])
+np.random.shuffle(images)
+train_images = images[:80]
+test_images = images[80:]
+print(images.shape, train_images.shape, test_images.shape)
+
 def train(BATCH_SIZE):
-    (X_train, y_train), (X_test, y_test) = mnist.load_data()
-    X_train = (X_train.astype(np.float32) - 127.5)/127.5
-    X_train = X_train[:, :, :, None]
-    X_test = X_test[:, :, :, None]
+    # (X_train, y_train), (X_test, y_test) = mnist.load_data()
+    # X_train = (X_train.astype(np.float32) - 127.5)/127.5
+    X_train = (train_images - 127.5) / 127.5
+    # X_test = X_test[:, :, :, None]
     # X_train = X_train.reshape((X_train.shape, 1) + X_train.shape[1:])
-    d = discriminator_model()
-    g = generator_model()
+    d = dcgan.create_discriminator_model(Input(shape=(224,224,3)))
+    g = dcgan.create_generator_model(Input(shape=(1024,)))
     d_on_g = generator_containing_discriminator(g, d)
 
-    for i, layer in enumerate(d_on_g.layers):
+    for i, layer in enumerate(g.layers):
         print(i, layer)
 
     d_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
@@ -96,7 +111,7 @@ def train(BATCH_SIZE):
         print("Epoch is", epoch)
         print("Number of batches", int(X_train.shape[0]/BATCH_SIZE))
         for index in range(int(X_train.shape[0]/BATCH_SIZE)):
-            noise = np.random.uniform(-1, 1, size=(BATCH_SIZE, 100))
+            noise = np.random.uniform(-1, 1, size=(BATCH_SIZE, 1024))
             image_batch = X_train[index*BATCH_SIZE:(index+1)*BATCH_SIZE]
             generated_images = g.predict(noise, verbose=0)
             if index % 20 == 0:
@@ -108,9 +123,13 @@ def train(BATCH_SIZE):
             y = [1] * BATCH_SIZE + [0] * BATCH_SIZE
             d_loss = d.train_on_batch(X, y)
             print("batch %d d_loss : %f" % (index, d_loss))
-            noise = np.random.uniform(-1, 1, (BATCH_SIZE, 100))
+            noise = np.random.uniform(-1, 1, (BATCH_SIZE, 1024))
             d.trainable = False
+            print((g.layers[7].get_weights())[0][0][0][0][:5],
+                  ((g.layers[7].get_weights())[0][0][0][0][:5]).sum())
             g_loss = d_on_g.train_on_batch(noise, [1] * BATCH_SIZE)
+            print((g.layers[7].get_weights())[0][0][0][0][:5],
+                  ((g.layers[7].get_weights())[0][0][0][0][:5]).sum())
             d.trainable = True
             print("batch %d g_loss : %f" % (index, g_loss))
             if index % 10 == 9:
