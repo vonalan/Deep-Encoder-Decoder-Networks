@@ -269,6 +269,7 @@ def train(args, image_dict, generator, discriminator, gan_model):
             # optimizer = SGD(lr=5e-4, momentum=9e-1, nesterov=True)
             # mix_model.compile(optimizer=optimizer, loss=binary_crossentropy, metrics=[binary_crossentropy])
 
+            # TODO: WHY CAN'T GENERATOR BE TRAINED???
             discriminator.trainable = False
             generator.trainable = True
             gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
