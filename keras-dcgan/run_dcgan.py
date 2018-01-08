@@ -230,7 +230,7 @@ def train(args, image_dict, generator, discriminator, gan_model):
                 for i in range(gen_image_batch.shape[0]):
                     if i > 0: break
                     gen_image = gen_image_batch[i,...]
-                    print(gen_image.shape, gen_image.sum())
+                    print(gen_image.shape, gen_image.min(), gen_image.max(), gen_image.sum())
 
                     # gen_image = (gen_image - gen_image.min()) / (gen_image.max() - gen_image.min())
                     # gen_image = np.round(gen_image * 255.0).astype(np.uint8)
