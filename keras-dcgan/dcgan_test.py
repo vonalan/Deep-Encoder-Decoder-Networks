@@ -1,4 +1,4 @@
-from keras.models import Sequential
+from keras.models import Sequential, Model
 from keras.layers import Dense
 from keras.layers import Reshape, Input
 from keras.layers.core import Activation
@@ -15,39 +15,89 @@ import math
 
 
 def generator_model():
-    model = Sequential()
-    model.add(Dense(input_dim=100, output_dim=1024))
-    model.add(Activation('tanh'))
-    model.add(Dense(128*7*7))
-    model.add(BatchNormalization())
-    model.add(Activation('tanh'))
-    model.add(Reshape((7, 7, 128), input_shape=(128*7*7,)))
-    model.add(UpSampling2D(size=(2, 2)))
-    model.add(Conv2D(64, (5, 5), padding='same'))
-    model.add(Activation('tanh'))
-    model.add(UpSampling2D(size=(2, 2)))
-    model.add(Conv2D(3, (5, 5), padding='same'))
-    model.add(Activation('tanh'))
+    # model = Sequential()
+    # model.add(Dense(input_dim=100, output_dim=1024))
+    # model.add(Activation('tanh'))
+    # model.add(Dense(128*7*7))
+    # model.add(BatchNormalization())
+    # model.add(Activation('tanh'))
+    # model.add(Reshape((7, 7, 128), input_shape=(128*7*7,)))
+    # model.add(UpSampling2D(size=(2, 2)))
+    # model.add(Conv2D(64, (5, 5), padding='same'))
+    # model.add(Activation('tanh'))
+    # model.add(UpSampling2D(size=(2, 2)))
+    # model.add(Conv2D(3, (5, 5), padding='same'))
+    # model.add(Activation('tanh'))
+
+    input = Input((1024,))
+
+    x = input
+
+    x = Dense(1024)(x)
+    x = Activation('tanh')(x)
+
+    x = Dense(128 * 7 * 7)(x)
+    x = BatchNormalization()(x)
+    x = Activation('tanh')(x)
+
+    x = Reshape((7,7,128))(x)
+
+    x = UpSampling2D(size=(2,2))(x)
+    x = Conv2D(64, (5, 5), padding='same')(x)
+    x = Activation('tanh')(x)
+
+    x = UpSampling2D(size=(2,2))(x)
+    x = Conv2D(3, (5, 5), padding='same')(x)
+    x = Activation('tanh')(x)
+
+    output = x
+
+    model = Model(input, output)
+
     return model
 
 
 def discriminator_model():
-    model = Sequential()
-    model.add(
-            Conv2D(64, (5, 5),
-            padding='same',
-            input_shape=(28, 28, 3))
-            )
-    model.add(Activation('tanh'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(128, (5, 5)))
-    model.add(Activation('tanh'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Flatten())
-    model.add(Dense(1024))
-    model.add(Activation('tanh'))
-    model.add(Dense(1))
-    model.add(Activation('sigmoid'))
+    # model = Sequential()
+    # model.add(
+    #         Conv2D(64, (5, 5),
+    #         padding='same',
+    #         input_shape=(28, 28, 3))
+    #         )
+    # model.add(Activation('tanh'))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(Conv2D(128, (5, 5)))
+    # model.add(Activation('tanh'))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(Flatten())
+    # model.add(Dense(1024))
+    # model.add(Activation('tanh'))
+    # model.add(Dense(1))
+    # model.add(Activation('sigmoid'))
+
+    input = Input((28,28,3))
+
+    x = input
+
+    x = Conv2D(64,(5,5), padding='same')(x)
+    x = Activation('tanh')(x)
+    x = MaxPooling2D(pool_size=(2,2))(x)
+
+    x = Conv2D(128, (5, 5))(x)
+    x = Activation('tanh')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = Flatten()(x)
+    x = Dense(1024)(x)
+    x = Activation('tanh')(x)
+
+    x = Dense(1)(x)
+    x = Activation('sigmoid')(x)
+
+    output = x
+
+    model = Model(input, output)
+
     return model
 
 
@@ -81,7 +131,7 @@ image_list = os.listdir(image_dir)
 images = np.zeros((len(image_list), 224, 224, 3))
 for i, image in enumerate(image_list):
     image_path = os.path.join(image_dir, image)
-    images[i] = np.array(Image.open(image_path).resize((224,224)))
+    images[i] = np.array(Image.open(image_path).resize((224, 224)))
 print(images[0,0,0,:])
 np.random.shuffle(images)
 train_images = images[:80]
@@ -94,8 +144,17 @@ def train(BATCH_SIZE):
     X_train = (train_images - 127.5) / 127.5
     # X_test = X_test[:, :, :, None]
     # X_train = X_train.reshape((X_train.shape, 1) + X_train.shape[1:])
+
+    ''''''
+    # g = generator_model()
+    # d = discriminator_model()
+    ''''''
+
+    ''''''
     d = dcgan.create_discriminator_model(Input(shape=(224,224,3)))
     g = dcgan.create_generator_model(Input(shape=(1024,)))
+    ''''''
+
     d_on_g = generator_containing_discriminator(g, d)
 
     for i, layer in enumerate(g.layers):
@@ -107,14 +166,14 @@ def train(BATCH_SIZE):
     d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
     d.trainable = True
     d.compile(loss='binary_crossentropy', optimizer=d_optim)
-    for epoch in range(100):
+    for epoch in range(1000000):
         print("Epoch is", epoch)
         print("Number of batches", int(X_train.shape[0]/BATCH_SIZE))
         for index in range(int(X_train.shape[0]/BATCH_SIZE)):
             noise = np.random.uniform(-1, 1, size=(BATCH_SIZE, 1024))
             image_batch = X_train[index*BATCH_SIZE:(index+1)*BATCH_SIZE]
             generated_images = g.predict(noise, verbose=0)
-            if index % 20 == 0:
+            if index % 100 == 0:
                 image = combine_images(generated_images)
                 image = image*127.5+127.5
                 Image.fromarray(image.astype(np.uint8)).save(
@@ -125,11 +184,11 @@ def train(BATCH_SIZE):
             print("batch %d d_loss : %f" % (index, d_loss))
             noise = np.random.uniform(-1, 1, (BATCH_SIZE, 1024))
             d.trainable = False
-            print((g.layers[7].get_weights())[0][0][0][0][:5],
-                  ((g.layers[7].get_weights())[0][0][0][0][:5]).sum())
+            print((g.layers[8].get_weights())[0][0][0][0][:5],
+                  ((g.layers[8].get_weights())[0][0][0][0][:5]).sum())
             g_loss = d_on_g.train_on_batch(noise, [1] * BATCH_SIZE)
-            print((g.layers[7].get_weights())[0][0][0][0][:5],
-                  ((g.layers[7].get_weights())[0][0][0][0][:5]).sum())
+            print((g.layers[8].get_weights())[0][0][0][0][:5],
+                  ((g.layers[8].get_weights())[0][0][0][0][:5]).sum())
             d.trainable = True
             print("batch %d g_loss : %f" % (index, g_loss))
             if index % 10 == 9:

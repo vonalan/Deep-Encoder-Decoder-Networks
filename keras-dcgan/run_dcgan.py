@@ -72,7 +72,8 @@ def iter_mini_batches(args, image_list, batch_size=4, shuffle=True):
             image_batch = np.zeros(tuple([batch_size] + list(args.input_image_shape)))
             # label_batch = np.zeros(tuple([batch_size] + [num_classes]))
             for idx in range(num_cur_batch):
-                image_batch[idx] = cv2.resize(cv2.imread(image_list[sidx + idx]), args.input_image_shape[:2])
+                image = cv2.resize(cv2.imread(image_list[sidx + idx]), args.input_image_shape[:2])
+                image_batch[idx] = (image - (255.0/2.0)) / (255.0/2.0)
                 # label_batch[idx][image_list[sidx + idx][1]] = 1
                 # print(image_batch[idx].shape, label_batch[idx])
             yield batch, image_batch
@@ -119,10 +120,10 @@ def build_models(args):
 
     print(id(generator), id(discriminator))
     # discriminator.trainable = False
-    gan_input_noise = Input(shape=args.input_noise_shape)
-    gen_output = generator(gan_input_noise)
+    gan_input = Input(shape=args.input_noise_shape)
+    gen_output = generator(gan_input)
     gan_output = discriminator(gen_output)
-    gan_model = Model(gan_input_noise, gan_output)
+    gan_model = Model(gan_input, gan_output)
     # discriminator.trainable = True
     print(id(gan_model), id(gan_model.layers[1]), id(gan_model.layers[2]))
 
@@ -216,10 +217,10 @@ def train(args, image_dict, generator, discriminator, gan_model):
 
             # generator.summary()
             # discriminator.summary()
-            gan_model.summary()
+            # gan_model.summary()
 
             # TODO: sigmoid
-            np.random.seed(0)
+            # np.random.seed(0)
             raw_noise_batch = np.random.uniform(-1.0, 1.0, size=(args.batch_size, 1024))
             gen_image_batch = generator.predict(raw_noise_batch)
 
@@ -230,8 +231,9 @@ def train(args, image_dict, generator, discriminator, gan_model):
                     gen_image = gen_image_batch[i,...]
                     print(gen_image.shape, gen_image.sum())
 
-                    gen_image = (gen_image - gen_image.min()) / (gen_image.max() - gen_image.min())
-                    gen_image = np.round(gen_image * 255.0).astype(np.uint8)
+                    # gen_image = (gen_image - gen_image.min()) / (gen_image.max() - gen_image.min())
+                    # gen_image = np.round(gen_image * 255.0).astype(np.uint8)
+                    gen_image = (gen_image * (255.0/2.0) + (255.0/2.0)).astype(np.uint8)
                     cv2.imwrite('../outputs/batch_%d.jpg'%(total_batch_index), gen_image)
 
             # # train discriminator model
@@ -278,7 +280,7 @@ def train(args, image_dict, generator, discriminator, gan_model):
 
             # generator.summary()
             # discriminator.summary()
-            gan_model.summary()
+            # gan_model.summary()
 
             g_loss = 0.0
             tmp = 1.0

@@ -53,10 +53,10 @@ def create_generator_model(inputs):
     # XBlock 1
     x = Conv2DTranspose(64, (3, 3), strides=(2, 2), activation='relu', padding='same', name='deconv1_2')(x)
     # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv1_1')(x)
-    x = Conv2D(3, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv1_1')(x)
+    # x = Conv2D(3, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv1_1')(x)
 
     # TODO: relu | tanh | sigmoid
-    # x = Conv2D(3, (3, 3), strides=(1, 1), activation='sigmoid', padding='same', name='deconv1_1')(x)
+    x = Conv2D(3, (3, 3), strides=(1, 1), activation='tanh', padding='same', name='deconv1_1')(x)
 
     # Output
     outputs = x
@@ -107,7 +107,7 @@ def create_discriminator_model(inputs):
     # FC
     # TODO: relu | tanh | sigmoid
     x = Flatten()(x)
-    x = Dense(1024, activation='relu')(x)
+    x = Dense(1024, activation='tanh')(x)
     x = Dense(1, activation='sigmoid')(x)
 
     # outputs
