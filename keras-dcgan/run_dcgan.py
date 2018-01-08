@@ -73,6 +73,7 @@ def iter_mini_batches(args, image_list, batch_size=4, shuffle=True):
             # label_batch = np.zeros(tuple([batch_size] + [num_classes]))
             for idx in range(num_cur_batch):
                 image = cv2.resize(cv2.imread(image_list[sidx + idx]), args.input_image_shape[:2])
+                # TODO: tanh | sigmoid | relu
                 image_batch[idx] = (image - (255.0/2.0)) / (255.0/2.0)
                 # label_batch[idx][image_list[sidx + idx][1]] = 1
                 # print(image_batch[idx].shape, label_batch[idx])
@@ -197,14 +198,14 @@ def train(args, image_dict, generator, discriminator, gan_model):
     valid_generator = iter_mini_batches(args, image_dict['valid'], batch_size=args.batch_size)
 
     # TODO: what model.compile() means ?
-    g_optimizer = SGD(lr=1e-2, momentum=0.0, decay=0.0, nesterov=False)
+    g_optimizer = SGD(lr=1e-2, momentum=9e-1, decay=0.0, nesterov=False) # momentum = 0.0
     # generator.compile(optimizer=g_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
 
-    m_optimizer = SGD(lr=5e-4, momentum=9e-1, decay=0.0, nesterov=True)
+    m_optimizer = SGD(lr=1e-2, momentum=9e-1, decay=0.0, nesterov=True) # lr = 5e-4
     # gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
 
     # discriminator.trainable = True
-    d_optimizer = SGD(lr=5e-4, momentum=9e-1, decay=0.0, nesterov=True)
+    d_optimizer = SGD(lr=1e-2, momentum=9e-1, decay=0.0, nesterov=True) # lr = 5e-4
     # discriminator.compile(optimizer=d_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
 
     for epoch in range(args.epoches):
@@ -233,6 +234,7 @@ def train(args, image_dict, generator, discriminator, gan_model):
 
                     # gen_image = (gen_image - gen_image.min()) / (gen_image.max() - gen_image.min())
                     # gen_image = np.round(gen_image * 255.0).astype(np.uint8)
+                    # TODO: tanh | sigmoid | relu
                     gen_image = (gen_image * (255.0/2.0) + (255.0/2.0)).astype(np.uint8)
                     cv2.imwrite('../outputs/batch_%d.jpg'%(total_batch_index), gen_image)
 
