@@ -10,12 +10,12 @@ from keras.optimizers import SGD
 
 # TODO: KERAS_DCGAN_ORIGIN
 
-def create_generator_model(inputs):
+def create_generator_model(input_noise_shape, output_image_shape):
     # replace unpool layer with stride convolutional layer
 
     # Input
     # inputs = Input(shape=(1,))
-    # inputs = Input(shape=(1024,))
+    inputs = Input(shape=input_noise_shape)
     x = inputs
 
     # FC
@@ -66,11 +66,12 @@ def create_generator_model(inputs):
     return model
     # return outputs
 
-def create_discriminator_model(inputs):
+def create_discriminator_model(input_image_shape, output_noise_shape):
     # replace pool layer with convolutional layer
 
     # Input
-    # inputs = Input(shape=(224,224,3))
+    assert input_image_shape == (224, 224, 3)
+    inputs = Input(shape=input_image_shape)
     x = inputs
 
     # Block 1
@@ -107,7 +108,7 @@ def create_discriminator_model(inputs):
     # FC
     # TODO: relu | tanh | sigmoid
     x = Flatten()(x)
-    x = Dense(1024, activation='tanh')(x)
+    x = Dense(output_noise_shape[0], activation='tanh')(x)
     x = Dense(1, activation='sigmoid')(x)
 
     # outputs
@@ -116,12 +117,13 @@ def create_discriminator_model(inputs):
     return model
     # return outputs
 
-def deconvnet(inputs):
+def deconvnet(input_image_shape):
     # replace pool layer with convolutional layer
     # replace unpool layer with stride convolutional layer
 
     # Input
-    # inputs = Input(shape=(224,224,3))
+    assert input_image_shape == (224,224,3)
+    inputs = Input(shape=input_image_shape)
     x = inputs
 
     # Block 1

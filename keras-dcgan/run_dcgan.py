@@ -25,7 +25,7 @@ parser.add_argument('--mode', default='train', type=str)
 parser.add_argument('--device', default='gpu', type=str)
 parser.add_argument('--base_model', default='vgg16', type=str)
 parser.add_argument('--input_image_shape', default=(224,224,3), type=tuple)
-parser.add_argument('--input_noise_shape', default=(1024,), type=tuple)
+parser.add_argument('--input_noise_shape', default=(128,), type=tuple)
 # parser.add_argument('--classes_path', default='../data/hmdb51_classes.txt', type=str)
 # parser.add_argument('--split_dir', default='../testTrainMulti_7030_splits/')
 # parser.add_argument('--split_round', default='1', type=str)
@@ -105,8 +105,8 @@ def iter_mini_batches_for_deconvnet(args, image_list, batch_size=4, shuffle=True
 #     return generator, discriminator, model
 
 def build_models(args):
-    input_noise = Input(shape=args.input_noise_shape)
-    input_image = Input(shape=args.input_image_shape)
+    # input_noise = Input(shape=args.input_noise_shape)
+    # input_image = Input(shape=args.input_image_shape)
 
     # gen_output = dcgan.generator_model(input_noise)
     # dis_output = dcgan.discriminator_model(input_image)
@@ -116,8 +116,8 @@ def build_models(args):
     # discriminator = Model(input_image, dis_output) # d_loss
     # # mix_model = Model(input_noise, mix_output) # g_loss
 
-    generator = dcgan.create_generator_model(input_noise)
-    discriminator = dcgan.create_discriminator_model(input_image)
+    generator = dcgan.create_generator_model(args.input_noise_shape, args.input_image_shape)
+    discriminator = dcgan.create_discriminator_model(args.input_image_shape, args.input_noise_shape)
 
     print(id(generator), id(discriminator))
     # discriminator.trainable = False
@@ -222,16 +222,15 @@ def train(args, image_dict, generator, discriminator, gan_model):
 
             # TODO: tanh | sigmoid | relu
             # np.random.seed(0)
-            raw_noise_batch = np.random.uniform(-1.0, 1.0, size=(args.batch_size, 1024))
+            raw_noise_batch = np.random.uniform(-1.0, 1.0, size=(args.batch_size, args.input_noise_shape[0]))
             gen_image_batch = generator.predict(raw_noise_batch)
 
-            if total_batch_index % 1 == 0:
-                # TODO: SAVE IMAGES
+            if total_batch_index % 8 == 0:
+                print('\n')
+                print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean(), gen_image_batch.sum())
                 for i in range(gen_image_batch.shape[0]):
                     if i > 0: break
                     gen_image = gen_image_batch[i,...]
-                    print(gen_image.shape, gen_image.min(), gen_image.max(), gen_image.sum())
-
                     # gen_image = (gen_image - gen_image.min()) / (gen_image.max() - gen_image.min())
                     # gen_image = np.round(gen_image * 255.0).astype(np.uint8)
                     # TODO: tanh | sigmoid | relu
@@ -251,7 +250,7 @@ def train(args, image_dict, generator, discriminator, gan_model):
             # optimizer = SGD(lr=5e-4, momentum=9e-1, nesterov=True)
             # discriminator.compile(optimizer=optimizer, loss=binary_crossentropy, metrics=[binary_crossentropy])
 
-            print('*' * 64)
+            # print('*' * 64)
             # print((discriminator.layers[-5].get_weights())[0][0][0][0][:5], ((discriminator.layers[-5].get_weights())[0][0][0][0][:5]).sum())
             # print((generator.layers[3].get_weights())[0][0][0][0][:5], ((generator.layers[3].get_weights())[0][0][0][0][:5]).sum())
             input_batch = np.concatenate((raw_image_batch, gen_image_batch), axis=0)
@@ -290,25 +289,25 @@ def train(args, image_dict, generator, discriminator, gan_model):
             for i in range(2):
                 # TODO: tanh | sigmoid | relu
                 # np.random.seed(0)
-                input_batch = np.random.uniform(-1.0, 1.0, size=(args.batch_size, 1024))
-                print(input_batch.tolist()[0][:7])
+                input_batch = np.random.uniform(-1.0, 1.0, size=(args.batch_size, args.input_noise_shape[0]))
+                # print(input_batch.tolist()[0][:7])
                 label_batch = input_batch.shape[0] * [1] # !!! tf.one_like() | tf.zero_like()
                 # print((discriminator.layers[-5].get_weights())[0][0][0][0][:5], ((discriminator.layers[-5].get_weights())[0][0][0][0][:5]).sum())
-                print((generator.layers[3].get_weights())[0][0][0][0][:5], ((generator.layers[3].get_weights())[0][0][0][0][:5]).sum())
-                print((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5], ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum(), ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum()/tmp)
+                # print((generator.layers[3].get_weights())[0][0][0][0][:5], ((generator.layers[3].get_weights())[0][0][0][0][:5]).sum())
+                # print((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5], ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum(), ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum()/tmp)
                 tmp = ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum()/tmp
                 loss, _ = gan_model.train_on_batch(input_batch, label_batch)
                 # print((discriminator.layers[-5].get_weights())[0][0][0][0][:5], ((discriminator.layers[-5].get_weights())[0][0][0][0][:5]).sum())
-                print((generator.layers[3].get_weights())[0][0][0][0][:5], ((generator.layers[3].get_weights())[0][0][0][0][:5]).sum())
-                print((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5], ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum(), ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum()/tmp)
+                # print((generator.layers[3].get_weights())[0][0][0][0][:5], ((generator.layers[3].get_weights())[0][0][0][0][:5]).sum())
+                # print((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5], ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum(), ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum()/tmp)
                 tmp = ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum()/tmp
                 # pred_label = mix_model.predict(input_batch)
                 # print(pred_label.tolist(), loss)
                 g_loss += loss
             g_loss = g_loss / 2
             # discriminator.trainable = True
-            print('*' * 64)
-            print('epoch: %d, batch: %d, d_loss: %.8f, g_loss_: %.8f\n' % (epoch, total_batch_index, d_loss, g_loss))
+            # print('*' * 64)
+            print('epoch: %d, batch: %d, d_loss: %.8f, g_loss_: %.8f' % (epoch, total_batch_index, d_loss, g_loss))
 
             if total_batch_index % 8 == 0:
                 generator.save_weights('generator.h5')
