@@ -305,9 +305,9 @@ def train(args, image_dict, generator, discriminator, gan_model):
                 # print(pred_label.tolist(), loss)
                 g_loss += loss
             g_loss = g_loss / 2
-            print('epoch: %d, batch: %d, d_loss: %.8f, g_loss_: %.8f' % (epoch, total_batch_index, d_loss, g_loss))
             # discriminator.trainable = True
-            print('*' * 64, '\n')
+            print('*' * 64)
+            print('epoch: %d, batch: %d, d_loss: %.8f, g_loss_: %.8f\n' % (epoch, total_batch_index, d_loss, g_loss))
 
         # if epoch % 10 == 0:
         #     # TODO: SAVE WEIGHTS
