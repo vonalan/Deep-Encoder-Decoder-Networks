@@ -197,30 +197,30 @@ def train(args, image_dict, generator, discriminator, gan_model):
     train_generator = iter_mini_batches(args, image_dict['train'], batch_size=args.batch_size)
     valid_generator = iter_mini_batches(args, image_dict['valid'], batch_size=args.batch_size)
 
-    # TODO: what model.compile() means ?
     g_optimizer = SGD(lr=1e-2, momentum=9e-1, decay=0.0, nesterov=False) # momentum = 0.0
-    # generator.compile(optimizer=g_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
-
     m_optimizer = SGD(lr=1e-2, momentum=9e-1, decay=0.0, nesterov=True) # lr = 5e-4
-    # gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
-
-    # discriminator.trainable = True
     d_optimizer = SGD(lr=1e-2, momentum=9e-1, decay=0.0, nesterov=True) # lr = 5e-4
-    # discriminator.compile(optimizer=d_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
+
+    # TODO: memory growing!!! get a session when call compile???
+    gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
+    discriminator.compile(optimizer=d_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
+    generator.compile(optimizer=g_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
 
     for epoch in range(args.epoches):
         for total_batch_index, (cur_batch_index, raw_image_batch) in enumerate(train_generator):
             discriminator.trainable = True
             generator.trainable = False
-            gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
-            discriminator.compile(optimizer=d_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
-            generator.compile(optimizer=g_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
+
+            # TODO: memory growing!!! get a session when call compile???
+            # gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
+            # discriminator.compile(optimizer=d_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
+            # generator.compile(optimizer=g_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
 
             # generator.summary()
             # discriminator.summary()
             # gan_model.summary()
 
-            # TODO: sigmoid
+            # TODO: tanh | sigmoid | relu
             # np.random.seed(0)
             raw_noise_batch = np.random.uniform(-1.0, 1.0, size=(args.batch_size, 1024))
             gen_image_batch = generator.predict(raw_noise_batch)
@@ -273,12 +273,13 @@ def train(args, image_dict, generator, discriminator, gan_model):
             # optimizer = SGD(lr=5e-4, momentum=9e-1, nesterov=True)
             # mix_model.compile(optimizer=optimizer, loss=binary_crossentropy, metrics=[binary_crossentropy])
 
-            # TODO: WHY CAN'T GENERATOR BE TRAINED???
             discriminator.trainable = False
             generator.trainable = True
-            gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
-            discriminator.compile(optimizer=d_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
-            generator.compile(optimizer=g_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
+
+            # TODO: memory growing!!! get a session when call compile???
+            # gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
+            # discriminator.compile(optimizer=d_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
+            # generator.compile(optimizer=g_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
 
             # generator.summary()
             # discriminator.summary()
@@ -287,8 +288,8 @@ def train(args, image_dict, generator, discriminator, gan_model):
             g_loss = 0.0
             tmp = 1.0
             for i in range(2):
-                # TODO: sigmoid
-                np.random.seed(0)
+                # TODO: tanh | sigmoid | relu
+                # np.random.seed(0)
                 input_batch = np.random.uniform(-1.0, 1.0, size=(args.batch_size, 1024))
                 print(input_batch.tolist()[0][:7])
                 label_batch = input_batch.shape[0] * [1] # !!! tf.one_like() | tf.zero_like()
@@ -309,9 +310,10 @@ def train(args, image_dict, generator, discriminator, gan_model):
             print('*' * 64)
             print('epoch: %d, batch: %d, d_loss: %.8f, g_loss_: %.8f\n' % (epoch, total_batch_index, d_loss, g_loss))
 
-        # if epoch % 10 == 0:
-        #     # TODO: SAVE WEIGHTS
-        #     pass
+            if total_batch_index % 8 == 0:
+                generator.save_weights('generator.h5')
+                discriminator.save_weights('discriminator.h5')
+                gan_model.save_weights('gan.h5')
 
 if __name__ == '__main__': 
     if args.device == 'cpu':
