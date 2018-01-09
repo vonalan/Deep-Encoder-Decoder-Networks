@@ -228,14 +228,13 @@ def train(args, image_dict, generator, discriminator, gan_model):
             if total_batch_index % 8 == 0:
                 print('\n')
                 print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean(), gen_image_batch.sum())
-                for i in range(gen_image_batch.shape[0]):
-                    if i > 0: break
-                    gen_image = gen_image_batch[i,...]
-                    # gen_image = (gen_image - gen_image.min()) / (gen_image.max() - gen_image.min())
-                    # gen_image = np.round(gen_image * 255.0).astype(np.uint8)
-                    # TODO: tanh | sigmoid | relu
-                    gen_image = (gen_image * (255.0/2.0) + (255.0/2.0)).astype(np.uint8)
-                    cv2.imwrite('../outputs/batch_%d.jpg'%(total_batch_index), gen_image)
+
+                # TODO: tanh | sigmoid | relu
+                gen_image_batch = (gen_image_batch * (255.0/2.0) + (255.0/2.0)).astype(np.uint8)
+                print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean(), gen_image_batch.sum())
+
+                # TODO: save | viusalize images
+                cv2.imwrite('../outputs/batch_%d.jpg' % (total_batch_index), gen_image_batch[0,...])
 
             # # train discriminator model
             # discriminator.trainable = True
@@ -309,6 +308,7 @@ def train(args, image_dict, generator, discriminator, gan_model):
             # print('*' * 64)
             print('epoch: %d, batch: %d, d_loss: %.8f, g_loss_: %.8f' % (epoch, total_batch_index, d_loss, g_loss))
 
+            # TODO: save | load weights
             if total_batch_index % 8 == 0:
                 generator.save_weights('generator.h5')
                 discriminator.save_weights('discriminator.h5')
