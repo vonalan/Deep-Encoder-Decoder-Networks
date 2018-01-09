@@ -227,11 +227,11 @@ def train(args, image_dict, generator, discriminator, gan_model):
 
             if total_batch_index % 8 == 0:
                 print('\n')
-                print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean(), gen_image_batch.sum())
+                print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean())
 
                 # TODO: tanh | sigmoid | relu
                 gen_image_batch = (gen_image_batch * (255.0/2.0) + (255.0/2.0)).astype(np.uint8)
-                print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean(), gen_image_batch.sum())
+                print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean())
 
                 # TODO: save | viusalize images
                 cv2.imwrite('../outputs/batch_%d.jpg' % (total_batch_index), gen_image_batch[0,...])
