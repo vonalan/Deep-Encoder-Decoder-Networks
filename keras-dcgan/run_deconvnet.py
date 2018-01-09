@@ -39,8 +39,8 @@ parser.add_argument('--val_steps', default=500, type=int)
 args, _ = parser.parse_known_args()
 
 # no GPU supplied
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 def get_image_lists(args):
     image_list = os.listdir(args.image_dir)
@@ -126,7 +126,7 @@ def train(args, image_dict, base_model, model):
     # for i, layer in enumerate(base_model.layers):
     #     layer.trainable = False
     optimizer = SGD(lr=1e-5, momentum=9e-1, decay=1e-6)
-    model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_logarithmic_error])
+    model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_error])
     model.fit_generator(generator=train_generator,
                               steps_per_epoch=args.train_steps,
                               epochs=args.epoches,
@@ -142,7 +142,7 @@ def train(args, image_dict, base_model, model):
     # for i, layer in enumerate(base_model.layers):
     #     layer.trainable=True
     # optimizer = SGD(lr=1e-5, momentum=9e-1, decay=1e-6)
-    # model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_logarithmic_error])
+    # model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_error])
     # model.fit_generator(generator=train_generator,
     #                           steps_per_epoch=args.train_steps,
     #                           epochs=args.epoches,

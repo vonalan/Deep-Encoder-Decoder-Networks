@@ -36,8 +36,10 @@ def Unpooling2D(mask,x):
     x = UpSampling2D()(x)
     return Multiply()([mask, x])
 
-def deconvnet(weights=None):
-    inputData = Input(batch_shape=(None,224,224,3))
+def deconvnet(input_image_shape):
+    assert input_image_shape == (224,224,3)
+    # inputData = Input(batch_shape=(None,224,224,3))
+    inputData = Input(shape=input_image_shape)
     #First Layer
     conv1_1 = Conv2D(64,kernel_size=(3,3),activation='relu',padding='same', name='block1_conv1')(inputData)
     conv1_2 = Conv2D(64,kernel_size=(3,3),activation='relu',padding='same', name='block1_conv2')(conv1_1)
@@ -102,10 +104,12 @@ def deconvnet(weights=None):
     # modelD.load_weights('/home/afagnani/keras-deconvnet/fcn.h5', by_name=True)
     # modelD.load_weights('deconv_weights.h5', by_name=True)
 
-    return None, modelD
+    return modelD
 
-def deconvnet_without_mask(weights=None):
-    inputData = Input(batch_shape=(None, 224, 224, 3))
+def deconvnet_without_mask(input_image_shape):
+    assert input_image_shape == (224, 224, 3)
+    # inputData = Input(batch_shape=(None,224,224,3))
+    inputData = Input(shape=input_image_shape)
     # First Layer
     conv1_1 = Conv2D(64, kernel_size=(3, 3), activation='relu', padding='same', name='block1_conv1')(inputData)
     conv1_2 = Conv2D(64, kernel_size=(3, 3), activation='relu', padding='same', name='block1_conv2')(conv1_1)
@@ -175,7 +179,7 @@ def deconvnet_without_mask(weights=None):
     # modelD.load_weights('/home/afagnani/keras-deconvnet/fcn.h5', by_name=True)
     # modelD.load_weights('deconv_weights.h5', by_name=True)
 
-    return None, modelD
+    return modelD
 
 def vgg16_convnet(weights=None):
     base_model = VGG16(include_top=False, weights=weights)

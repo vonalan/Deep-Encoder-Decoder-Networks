@@ -15,9 +15,9 @@ from keras.losses import mean_squared_error, mean_squared_logarithmic_error
 from keras.metrics import mean_squared_error, mean_squared_logarithmic_error
 from keras.callbacks import ModelCheckpoint, CSVLogger, LearningRateScheduler, TensorBoard, ReduceLROnPlateau
 
-# import deconvnet as deconvnet
-import vgg16_dcgan as deconvnet
-# import utils
+'''run deconvnet_dcgan with temp images'''
+import deconvnet_mini as deconvnet
+''''''
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
@@ -39,8 +39,8 @@ parser.add_argument('--val_steps', default=500, type=int)
 args, _ = parser.parse_known_args()
 
 # no GPU supplied
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def get_image_lists(args):
     image_list = os.listdir(args.image_dir)
@@ -76,9 +76,9 @@ def iter_mini_batches(args, image_list, batch_size=4, shuffle=True):
             yield image_batch, image_batch
 
 def build(args):
-    input_image = Input(shape=args.input_shape)
-    base_model, model = deconvnet.deconvnet(input_image)
-    for i, layer in enumerate(model.layers):
+    base_model, model = deconvnet.vgg16_convnet(weights=None)
+    model = deconvnet.vgg16_deconvnet(model)
+    for i, layer in enumerate(model.layers): 
         print(i, layer.name)
     return base_model, model
 
@@ -126,7 +126,7 @@ def train(args, image_dict, base_model, model):
     # for i, layer in enumerate(base_model.layers):
     #     layer.trainable = False
     optimizer = SGD(lr=1e-5, momentum=9e-1, decay=1e-6)
-    model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_logarithmic_error])
+    model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_error])
     model.fit_generator(generator=train_generator,
                               steps_per_epoch=args.train_steps,
                               epochs=args.epoches,
@@ -134,7 +134,7 @@ def train(args, image_dict, base_model, model):
                               validation_steps=args.val_steps,
                               max_q_size=100, # 100
                               workers=1, # num_gpus/num_cpus
-                              # pickle_safe=True,
+                            #   pickle_safe=True,
                               callbacks=[csv_logger, checkpointer, tensorboard]
                               )
 
@@ -142,7 +142,7 @@ def train(args, image_dict, base_model, model):
     # for i, layer in enumerate(base_model.layers):
     #     layer.trainable=True
     # optimizer = SGD(lr=1e-5, momentum=9e-1, decay=1e-6)
-    # model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_logarithmic_error])
+    # model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_error])
     # model.fit_generator(generator=train_generator,
     #                           steps_per_epoch=args.train_steps,
     #                           epochs=args.epoches,
@@ -154,7 +154,7 @@ def train(args, image_dict, base_model, model):
     #                           callbacks=[csv_logger, checkpointer, tensorboard]
     #                           )
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     if args.device == 'cpu':
         with tf.device('/cpu:0'):
             main(args)

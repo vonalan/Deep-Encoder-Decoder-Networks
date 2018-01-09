@@ -4,6 +4,7 @@ import itertools
 import argparse
 
 import numpy as np
+import cv2
 import tensorflow as tf
 from keras.layers import Input, Dense, GlobalAveragePooling2D
 from keras.models import Model
@@ -18,8 +19,6 @@ from keras.callbacks import ModelCheckpoint, CSVLogger, LearningRateScheduler, T
 from keras.applications.inception_v3 import InceptionV3
 # from keras.applications.inception_resnet_v2 import InceptionResNetV2
 # from keras.applications.xception import Xception
-
-import data_utils 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
@@ -39,11 +38,18 @@ parser.add_argument('--train_steps', default=2000, type=int)
 parser.add_argument('--val_steps', default=500, type=int)
 args, _ = parser.parse_known_args()
 
-# import deconvnet
-import vgg16_dcgan as deconvnet
+# nos GPU supplied
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+'''retrain deconvnet by hmdb51'''
+import deconvnet
+import data_utils
+''''''
 
 def build(classes):
-    base_model, model = deconvnet.deconvnet()
+    base_model = None
+    model = deconvnet.deconvnet(args.input_shape)
     for i, layer in enumerate(model.layers):
         print(i, layer.name)
     return base_model, model
@@ -52,7 +58,14 @@ def valid(args, classes, base_model, model):
     pass
 
 def infer(args, classes, base_model, model):
-    pass
+    infer_generator = data_utils.iter_mini_batches_for_deconvnet(args, 'testing', len(classes), batch_size=args.batch_size)
+    for batch, (raw_image_batch, _)  in enumerate(infer_generator):
+        if batch > 0: break
+
+        pred_image_batch = model.predict(raw_image_batch)
+        comp_image_batch = np.concatenate((raw_image_batch, pred_image_batch), axis=2).astype(np.uint8)
+        for i in range(comp_image_batch.shape[0]):
+            cv2.imwrite('../temp_for_deconvnet/outputs/pred_%d.jpg'%(i), comp_image_batch[i,...])
 
 def train(args, classes, base_model, model):
     save_model_path = os.path.join(args.logdir, "trained_models")

@@ -16,10 +16,6 @@ from keras.metrics import mean_squared_error, mean_squared_logarithmic_error, bi
 from keras.callbacks import ModelCheckpoint, CSVLogger, LearningRateScheduler, TensorBoard, ReduceLROnPlateau
 from keras.utils import plot_model
 
-# import deconvnet as deconvnet
-import vgg16_dcgan as dcgan
-# import utils
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
 parser.add_argument('--device', default='gpu', type=str)
@@ -40,9 +36,13 @@ parser.add_argument('--train_steps', default=2000, type=int)
 parser.add_argument('--val_steps', default=500, type=int)
 args, _ = parser.parse_known_args()
 
-# no GPU supplied
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+# # no GPU supplied
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+'''run deconvnet_dcgan with temp images'''
+import deconvnet_dcgan as dcgan
+''''''
 
 def get_image_lists(args):
     image_list = os.listdir(args.image_dir)
@@ -176,7 +176,7 @@ def generate(args, image_dict, generator, discriminator, mix_model):
         if i >= 10: break
         raw_rgbs = cv2.resize(cv2.imread(image_path), args.input_shape[:2])
         raw_rgbs = np.expand_dims(raw_rgbs, axis=0)
-        pred_rgbs = model.predict(raw_rgbs)
+        pred_rgbs = generator.predict(raw_rgbs)
         composed = np.concatenate((raw_rgbs[0], pred_rgbs[0]), axis=1)
         composed = composed.astype(np.uint8)
         cv2.imwrite(os.path.join(args.output_dir, '%d.jpg'%(i+1)), composed)
@@ -312,7 +312,7 @@ def train(args, image_dict, generator, discriminator, gan_model):
             if total_batch_index % 8 == 0:
                 generator.save_weights('generator.h5')
                 discriminator.save_weights('discriminator.h5')
-                gan_model.save_weights('gan.h5')
+                # gan_model.save_weights('gan.h5')
 
 if __name__ == '__main__': 
     if args.device == 'cpu':

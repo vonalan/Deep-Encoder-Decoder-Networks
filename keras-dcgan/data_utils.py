@@ -18,43 +18,6 @@ parser.add_argument('--video_dir', default='../hmdb51_org/', type=str)
 parser.add_argument('--image_dir', default='../hmdb51_org_images/', type=str)
 args, _ = parser.parse_known_args()
 
-def embed_image(bg_img, fg_img):
-    bg_h, bg_w = bg_img.shape[:2]
-    fg_h, fg_w = fg_img.shape[:2]
-
-    cv2.rectangle(fg_img, (0,0), (fg_h-1, fg_w-1), (255,0,255), thickness=1)
-
-    # rotate && resize
-    offset_y = random.randint(0, bg_h)
-    offset_x = random.randint(0, bg_w)
-    theta = random.randint(0, 360)
-
-    # offset_y = bg_h / 2
-    # offset_x = bg_w / 2
-    # theta = 45
-
-    alpha = ((theta + 45) % 360) / 180.0 * math.pi
-    fg_diag = (fg_h ** 2 + fg_w ** 2) ** 0.5 * 0.5
-
-    # y_test = fg_diag * math.sin(45/180.0*math.pi)
-    # x_test = fg_diag * math.cos(45/180.0*math.pi)
-    #
-    # left_y = bg_h - offset_y
-    # left_x = bg_w - offset_x
-    # proj_y = fg_diag * math.sin(alpha)
-    # proj_x = fg_diag * math.cos(alpha)
-
-    # TODO: devided by zero when ((theta + 45) % 90 == 0)
-    scale_x = min(offset_y, bg_h - offset_y) / (fg_diag * abs(math.sin(alpha)))
-    scale_y = min(offset_x, bg_w - offset_x) / (fg_diag * abs(math.cos(alpha)))
-    scale = min(min(scale_y, scale_x), 1)
-
-    print(offset_y, offset_x, theta, scale)
-
-    M = cv2.getRotationMatrix2D((fg_w/2,fg_h/2), theta, scale=scale)
-    fg_img = cv2.warpAffine(fg_img, M, (fg_h,fg_w))
-    cv2.imwrite('xxx.jpg', fg_img)
-
 def get_classes(classes_path):
     with open(classes_path, 'r') as f:
         lines = f.readlines()
@@ -153,6 +116,15 @@ def create_image_list(image_dir, video_dicts, category):
     return len(image_list), image_dist, image_list
 
 def iter_mini_batches(args, category, num_classes, batch_size=4, shuffle=True):
+    '''
+    data generator for classification problems.
+    :param args:
+    :param category:
+    :param num_classes:
+    :param batch_size:
+    :param shuffle:
+    :return:
+    '''
     # TODO: shuffle, resize, crop, flip, distort, blur, ...
     video_dicts = create_video_dicts(args.video_dir, args.split_dir, sround=args.split_round)
     _, _, image_list = create_image_list(args.image_dir, video_dicts, category)
@@ -176,6 +148,15 @@ def iter_mini_batches(args, category, num_classes, batch_size=4, shuffle=True):
             yield image_batch, label_batch
 
 def iter_mini_batches_for_deconvnet(args, category, num_classes, batch_size=4, shuffle=True):
+    '''
+    data generator for deconvet and dcgan.
+    :param args:
+    :param category:
+    :param num_classes:
+    :param batch_size:
+    :param shuffle:
+    :return:
+    '''
     # TODO: shuffle, resize, crop, flip, distort, blur, ...
     video_dicts = create_video_dicts(args.video_dir, args.split_dir, sround=args.split_round)
     _, _, image_list = create_image_list(args.image_dir, video_dicts, category)
