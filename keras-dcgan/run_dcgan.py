@@ -182,8 +182,11 @@ def generate(args, image_dict, generator, discriminator, mix_model):
         cv2.imwrite(os.path.join(args.output_dir, '%d.jpg'%(i+1)), composed)
 
 def train(args, image_dict, generator, discriminator, gan_model):
+    # prepare file system
     save_model_path = os.path.join(args.logdir, "trained_models")
+    save_image_path = os.path.join(args.logdir, "outputs")
     if not os.path.exists(save_model_path): os.makedirs(save_model_path)
+    if not os.path.exists(save_image_path): os.makedirs(save_image_path)
 
     # # define callbacks
     # # reduce_lr=ReduceLROnPlateau(monitor="val_loss", factor=args.lr_decay_mult"], patience=2)
@@ -201,118 +204,53 @@ def train(args, image_dict, generator, discriminator, gan_model):
     m_optimizer = SGD(lr=1e-2, momentum=9e-1, decay=0.0, nesterov=True) # lr = 5e-4
     d_optimizer = SGD(lr=1e-2, momentum=9e-1, decay=0.0, nesterov=True) # lr = 5e-4
 
-    # TODO: memory growing!!! get a session when call compile???
+    # TODO: memory growing!!! get a session when calling compile???
+    # discriminator.trainable = True
+    # generator.trainable = True
     gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
     discriminator.compile(optimizer=d_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
     generator.compile(optimizer=g_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
 
     for epoch in range(args.epoches):
         for total_batch_index, (cur_batch_index, raw_image_batch) in enumerate(train_generator):
+            # step 01 alternative training, discriminator
             discriminator.trainable = True
             generator.trainable = False
-
-            # TODO: memory growing!!! get a session when call compile???
             # gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
             # discriminator.compile(optimizer=d_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
             # generator.compile(optimizer=g_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
-
-            # generator.summary()
-            # discriminator.summary()
-            # gan_model.summary()
 
             # TODO: tanh | sigmoid | relu
             # np.random.seed(0)
             raw_noise_batch = np.random.uniform(-1.0, 1.0, size=(args.batch_size, args.input_noise_shape[0]))
             gen_image_batch = generator.predict(raw_noise_batch)
-
-            if total_batch_index % 8 == 0:
-                print('\n')
-                print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean())
-
-                # TODO: tanh | sigmoid | relu
-                gen_image_batch = (gen_image_batch * (255.0/2.0) + (255.0/2.0)).astype(np.uint8)
-                print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean())
-
-                # TODO: save | viusalize images
-                cv2.imwrite('../outputs/batch_%d.jpg' % (total_batch_index), gen_image_batch[0,...])
-
-            # # train discriminator model
-            # discriminator.trainable = True
-            # generator.trainable= False
-            # for i, layer in enumerate(generator.layers):
-            #     layer.trainable = False
-            # for i, layer in enumerate(discriminator.layers):
-            #     layer.trainable = True
-            # for i, model in enumerate(mix_model.layers): # reference
-            #     for j, layer in enumerate(model.layers):
-            #         print(i, model.name, j, layer.name, layer.trainable)
-            # optimizer = SGD(lr=5e-4, momentum=9e-1, nesterov=True)
-            # discriminator.compile(optimizer=optimizer, loss=binary_crossentropy, metrics=[binary_crossentropy])
-
-            # print('*' * 64)
-            # print((discriminator.layers[-5].get_weights())[0][0][0][0][:5], ((discriminator.layers[-5].get_weights())[0][0][0][0][:5]).sum())
-            # print((generator.layers[3].get_weights())[0][0][0][0][:5], ((generator.layers[3].get_weights())[0][0][0][0][:5]).sum())
             input_batch = np.concatenate((raw_image_batch, gen_image_batch), axis=0)
             label_batch = raw_image_batch.shape[0] * [1] + gen_image_batch.shape[0] * [0] # !!! tf.one_like() | tf.zero_like()
             d_loss, _ = discriminator.train_on_batch(input_batch, label_batch)
-            # print((discriminator.layers[-5].get_weights())[0][0][0][0][:5], ((discriminator.layers[-5].get_weights())[0][0][0][0][:5]).sum())
-            # print((generator.layers[3].get_weights())[0][0][0][0][:5], ((generator.layers[3].get_weights())[0][0][0][0][:5]).sum())
 
-            # # train generator model, error propagates back through discriminator
-            # discriminator.trainable = False
-            # generator.trainable = True
-            # for i, layer in enumerate(generator.layers):
-            #     layer.trainable = True
-            # for i, layer in enumerate(discriminator.layers):
-            #     layer.trainable = False
-            # for i, model in enumerate(mix_model.layers): # reference
-            #     for j, layer in enumerate(model.layers):
-            #         print(i, model.name, j, layer.name, layer.trainable)
-            # optimizer = SGD(lr=5e-4, momentum=9e-1, nesterov=True)
-            # mix_model.compile(optimizer=optimizer, loss=binary_crossentropy, metrics=[binary_crossentropy])
-
+            # step 02 alternative traning, generator
             discriminator.trainable = False
             generator.trainable = True
-
-            # TODO: memory growing!!! get a session when call compile???
             # gan_model.compile(optimizer=m_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
             # discriminator.compile(optimizer=d_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
             # generator.compile(optimizer=g_optimizer, loss=binary_crossentropy, metrics=[binary_accuracy])
 
-            # generator.summary()
-            # discriminator.summary()
-            # gan_model.summary()
+            # TODO: tanh | sigmoid | relu
+            # np.random.seed(0)
+            input_batch = np.random.uniform(-1.0, 1.0, size=(args.batch_size, args.input_noise_shape[0]))
+            label_batch = input_batch.shape[0] * [1] # !!! tf.one_like() | tf.zero_like()
+            g_loss, _ = gan_model.train_on_batch(input_batch, label_batch)
 
-            g_loss = 0.0
-            tmp = 1.0
-            for i in range(2):
-                # TODO: tanh | sigmoid | relu
-                # np.random.seed(0)
-                input_batch = np.random.uniform(-1.0, 1.0, size=(args.batch_size, args.input_noise_shape[0]))
-                # print(input_batch.tolist()[0][:7])
-                label_batch = input_batch.shape[0] * [1] # !!! tf.one_like() | tf.zero_like()
-                # print((discriminator.layers[-5].get_weights())[0][0][0][0][:5], ((discriminator.layers[-5].get_weights())[0][0][0][0][:5]).sum())
-                # print((generator.layers[3].get_weights())[0][0][0][0][:5], ((generator.layers[3].get_weights())[0][0][0][0][:5]).sum())
-                # print((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5], ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum(), ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum()/tmp)
-                tmp = ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum()/tmp
-                loss, _ = gan_model.train_on_batch(input_batch, label_batch)
-                # print((discriminator.layers[-5].get_weights())[0][0][0][0][:5], ((discriminator.layers[-5].get_weights())[0][0][0][0][:5]).sum())
-                # print((generator.layers[3].get_weights())[0][0][0][0][:5], ((generator.layers[3].get_weights())[0][0][0][0][:5]).sum())
-                # print((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5], ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum(), ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum()/tmp)
-                tmp = ((gan_model.layers[1].layers[3].get_weights())[0][0][0][0][:5]).sum()/tmp
-                # pred_label = mix_model.predict(input_batch)
-                # print(pred_label.tolist(), loss)
-                g_loss += loss
-            g_loss = g_loss / 2
-            # discriminator.trainable = True
-            # print('*' * 64)
+            # TODO: save | load weights, save | viusalize images
+            if total_batch_index % 100 == 0:
+                print('\n')
+                generator.save_weights(os.path.join(save_model_path, 'gen.h5'))
+                discriminator.save_weights(os.path.join(save_model_path, 'dis.h5'))
+                print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean())
+                gen_image_batch = (gen_image_batch * (255.0/2.0) + (255.0/2.0)).astype(np.uint8)
+                print(gen_image_batch.shape, gen_image_batch.min(), gen_image_batch.max(), gen_image_batch.mean())
+                cv2.imwrite(os.path.join(save_image_path, 'batch_%d.jpg' % (total_batch_index)), gen_image_batch[0,...])
             print('epoch: %d, batch: %d, d_loss: %.8f, g_loss_: %.8f' % (epoch, total_batch_index, d_loss, g_loss))
-
-            # TODO: save | load weights
-            if total_batch_index % 8 == 0:
-                generator.save_weights('generator.h5')
-                discriminator.save_weights('discriminator.h5')
-                # gan_model.save_weights('gan.h5')
 
 if __name__ == '__main__': 
     if args.device == 'cpu':
@@ -320,4 +258,3 @@ if __name__ == '__main__':
             main(args)
     else:
         main(args)
-    # build_models(args)
