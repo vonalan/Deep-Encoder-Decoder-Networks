@@ -20,15 +20,13 @@ def create_generator_model(input_noise_shape, output_image_shape):
 
     # FC
     # TODO: relu | tanh | sigmoid
-    # x = Dense(1024, activation='tanh')(x)
     x = Dense((64 * 7 * 7), activation='relu')(x)
-    x = Reshape((7,7,64))(x) # not (64,7,7)
+    x = Reshape((7, 7, 64))(x)  # not (4096,1,1)
 
+    # TODO: where is fc_7?
     # FCN
-    # TODO: is fc_8 necessary?
-    # x = Conv2D(64, (7, 7), strides=(1, 1), activation='relu', padding='same', name='fc_6')(x)
-    # x = Conv2D(64, (1, 1), strides=(1, 1), activation='relu', padding='same', name='fc_7')(x)
-    x = Conv2DTranspose(64, (7, 7), strides=(1, 1), activation='relu', padding='same', name='fc_8')(x)
+    x = Conv2DTranspose(64, (1, 1), strides=(1, 1), activation='relu', padding='same', name='fc_7')(x)
+    x = Conv2DTranspose(64, (7, 7), strides=(1, 1), activation='relu', padding='same', name='fc_6')(x)
 
     # XBlock 5
     x = Conv2DTranspose(64, (3, 3), strides=(2, 2), activation='relu', padding='same', name='deconv5_3')(x)
@@ -53,12 +51,11 @@ def create_generator_model(input_noise_shape, output_image_shape):
     # XBlock 1
     x = Conv2DTranspose(64, (3, 3), strides=(2, 2), activation='relu', padding='same', name='deconv1_2')(x)
     # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv1_1')(x)
-    # x = Conv2D(3, (3, 3), strides=(1, 1), activation='relu', padding='same', name='deconv1_1')(x)
-
+    # x = Conv2D(64, (3,3), strides=(1, 1), activation='relu', padding='same', name='deconv1_1')(x)
     # TODO: relu | tanh | sigmoid
-    x = Conv2D(3, (3, 3), strides=(1, 1), activation='tanh', padding='same', name='deconv1_1')(x)
+    x = Conv2D(3, (3,3), strides=(1, 1), activation='tanh', padding='same', name='deconv1_1')(x)
 
-    # Output
+    # XBlock 0 | Output
     outputs = x
 
     # Model
@@ -69,7 +66,7 @@ def create_generator_model(input_noise_shape, output_image_shape):
 def create_discriminator_model(input_image_shape, output_noise_shape):
     # replace pool layer with convolutional layer
 
-    # Input
+    # Block 0 | Input
     assert input_image_shape == (224, 224, 3)
     inputs = Input(shape=input_image_shape)
     x = inputs
@@ -100,10 +97,8 @@ def create_discriminator_model(input_image_shape, output_noise_shape):
     x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv5_3')(x)
 
     # FCN
-    # TODO: is fc_8 necessary?
     x = Conv2D(64, (7,7), strides=(1,1), activation='relu', padding='same', name='fc_6')(x)
-    # x = Conv2D(64, (1,1), strides=(1,1), activation='relu', padding='same', name='fc_7')(x)
-    # x = Conv2DTranspose(64, (7,7), strides=(1,1), activation='relu', padding='same', name='fc_8')(x)
+    x = Conv2D(64, (1,1), strides=(1,1), activation='relu', padding='same', name='fc_7')(x)
 
     # FC
     # TODO: relu | tanh | sigmoid
@@ -121,7 +116,7 @@ def deconvnet(input_image_shape):
     # replace pool layer with convolutional layer
     # replace unpool layer with stride convolutional layer
 
-    # Input
+    # Block 0 | Input
     assert input_image_shape == (224,224,3)
     inputs = Input(shape=input_image_shape)
     x = inputs
@@ -152,7 +147,7 @@ def deconvnet(input_image_shape):
     x = Conv2D(64, (3,3), strides=(2,2), activation='relu', padding='same', name='conv5_3')(x)
 
     # FCN
-    # TODO: is fc_8 necessary?
+    # TODO: is fc_8 | d_fc_8 necessary?
     x = Conv2D(64, (7,7), strides=(1,1), activation='relu', padding='same', name='fc_6')(x)
     x = Conv2D(64, (1,1), strides=(1,1), activation='relu', padding='same', name='fc_7')(x)
     x = Conv2DTranspose(64, (7,7), strides=(1,1), activation='relu', padding='same', name='fc_8')(x)
@@ -180,9 +175,11 @@ def deconvnet(input_image_shape):
     # XBlock 1
     x = Conv2DTranspose(64, (3,3), strides=(2,2), activation='relu', padding='same', name='deconv1_2')(x)
     # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv1_1')(x)
-    x = Conv2D(3, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv1_1')(x)
+    # x = Conv2D(64, (3,3), strides=(1,1), activation='relu', padding='same', name='deconv1_1')(x)
+    # TODO: relu | tanh | sigmoid
+    x = Conv2D(3, (3,3), strides=(2,2), activation='relu', padding='same', name='deconv1_1')(x)
 
-    # Output
+    # XBlock 0 | Output
     outputs = x
     
     # Model 
@@ -193,17 +190,13 @@ def test_generator(model):
     import numpy as np
     import cv2
 
-    zs = np.random.random((1024,))
-    zs = np.expand_dims(zs, axis=0)
-
+    zs = np.random.uniform(-1.0, 1.0, size=(10, 1024))
     ys = model.predict(zs)
-    print(ys.shape)
+    ys = (ys * (255.0 / 2.0) + (255.0 / 2.0)).astype(np.uint8)
+    print(ys.shape, ys.min(), ys.max(), ys.mean())
 
-    ys = (ys - ys.min()) / (ys.max() - ys.min())
-    ys = (ys * 255.0).astype(np.uint8)
-
-    ys = ys[0]
-    cv2.imwrite('../outputs/hhh.jpg', ys)
+    for i in range(ys.shape[0]):
+        cv2.imwrite('../outputs/test_generator_%d.jpg'%(i), ys[i,...])
 
 def test_deconvnet(model):
     import os
@@ -240,31 +233,16 @@ def test_discriminator(model):
 
         print(model.predict(image))
 
-def generator_containing_discriminator_dev(generator, discriminator):
-    pass
-
-def generator_containing_discriminator(generator, discriminator):
-    # TODO: substitute Sequential() with Model()
-    model = Sequential()
-    model.add(generator)
-    model.add(discriminator)
-    return model
-
 if __name__ == "__main__":
     input_image_shape = (224,224,3)
     input_noise_shape = (1024,)
 
-    generator = generator_model(Input(shape=input_noise_shape))
-    # for i, layer in enumerate(generator.layers):
-    #     print(i, '---', layer.name, '---', layer.output_shape)
-    # test_generator(model)
+    generator = create_generator_model((1024,),(224,224,3))
+    for i, layer in enumerate(generator.layers):
+        print(i, '---', layer.name, '---', layer.input_shape, '---', layer.output_shape)
+    # test_generator(generator)
 
-    discriminator = discriminator_model(Input(shape=input_image_shape))
-    # for i, layer in enumerate(discriminator.layers):
-    #     print(i, '---', layer.name, '---', layer.output_shape)
-    # test_discriminator(model)
-
-    model = generator_containing_discriminator(generator, discriminator)
-    # for i, model in enumerate(model.layers):
-    #     for j, layer in enumerate(model.layers):
-    #         print(i, model.name, j, layer.name)
+    discriminator = create_discriminator_model((224,224,3), (1024,))
+    for i, layer in enumerate(discriminator.layers):
+        print(i, '---', layer.name, '---', layer.input_shape, '---', layer.output_shape)
+    # test_discriminator(discriminator)
