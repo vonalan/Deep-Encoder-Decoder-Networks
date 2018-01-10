@@ -26,7 +26,7 @@ def get_classes(classes_path):
         line = line.strip()
         classes.append(line)
     return classes
-classes = get_classes(args.classes_path)
+# classes = get_classes(args.classes_path)
 
 def create_video_dicts(video_dir, split_dir, sround=1):
     if not tf.gfile.Exists(video_dir):
@@ -91,7 +91,7 @@ def create_video_dicts(video_dir, split_dir, sround=1):
         }
     return result
 
-def create_video_list(video_dir, video_dicts, category):
+def create_video_list(video_dir, video_dicts, category, classes):
     video_list = []
     video_dist = [0] * len(video_dicts.keys())
     for class_name, class_dict in video_dicts.items():
@@ -102,7 +102,7 @@ def create_video_list(video_dir, video_dicts, category):
             video_dist[classes.index(dir)] += 1
     return len(video_list), video_dist, video_list
 
-def create_image_list(image_dir, video_dicts, category):
+def create_image_list(image_dir, video_dicts, category, classes):
     image_list = []
     image_dist = [0] * len(video_dicts.keys())
     for class_name, class_dict in video_dicts.items():

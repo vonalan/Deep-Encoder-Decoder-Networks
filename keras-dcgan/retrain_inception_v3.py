@@ -19,8 +19,6 @@ from keras.applications.inception_v3 import InceptionV3
 # from keras.applications.inception_resnet_v2 import InceptionResNetV2
 # from keras.applications.xception import Xception
 
-import data_utils 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
 parser.add_argument('--device', default='gpu', type=str)
@@ -39,15 +37,18 @@ parser.add_argument('--train_steps', default=2000, type=int)
 parser.add_argument('--val_steps', default=500, type=int)
 args, _ = parser.parse_known_args()
 
-def build(classes):
-    base_model = InceptionV3(weights='imagenet', include_top=False) # [299,299,3]
+'''retrain inception_v3 with hmdb51'''
+import data_utils
+''''''
+
+def build(classes, weights=None):
+    base_model = InceptionV3(weights=weights, include_top=False) # [299,299,3]
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
     x = Dense(1024, activation='relu', name='fc_layer')(x)
     predictions = Dense(len(classes), activation='softmax', name='predictions')(x)
     model = Model(inputs=base_model.input, outputs=predictions, name='inception_v3')
-    for i, layer in enumerate(model.layers):
-        print(i, layer.name)
+
     return base_model, model
 
 def valid(args, classes, base_model, model):
@@ -104,8 +105,10 @@ def train(args, classes, base_model, model):
 
 def main(args):
     classes = data_utils.get_classes(args.classes_path)
-    base_model, model = build(classes)
-    
+    base_model, model = build(classes, weights='imagenet')
+    base_model.summary()
+    model.summary()
+
     if args.init_weights_path is not None: 
         model.load_weights(args.init_weights_path, by_name=True)
     

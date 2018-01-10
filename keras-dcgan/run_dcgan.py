@@ -44,9 +44,9 @@ args, _ = parser.parse_known_args()
 import deconvnet_dcgan as dcgan
 ''''''
 
-def get_image_lists(args):
-    image_list = os.listdir(args.image_dir)
-    image_list = [os.path.join(args.image_dir, image) for image in image_list]
+def get_image_lists(image_dir):
+    image_list = os.listdir(image_dir)
+    image_list = [os.path.join(image_dir, image) for image in image_list]
     image_dict = dict()
 
     random.seed(0)
