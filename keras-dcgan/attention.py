@@ -88,23 +88,29 @@ class CascadedAttentionBlock(Layer):
         return (input_shape[0], self.output_dim)
 
 def attention_test_tf():
-    inputs = tf.placeholder(tf.float32, shape=[None,1024])
-    x = inputs
+    inputs = tf.placeholder(tf.float32, shape=[None, 1024])
+    labels = tf.placeholder(tf.float32, shape=[None, 1024])
 
+    x = inputs
     x = single_attention_block(x)
     x = cascaded_attention_block(x)
-
     outputs = x
+
+    loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=outputs)
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-2).minimize(loss)
+    accuracy = tf.reduce_sum(tf.cast(tf.equal(tf.argmax(labels, axis=1), tf.argmax(outputs, axis=1)), tf.int32))
 
     init = tf.global_variables_initializer()
     sess = tf.Session()
     sess.run(init)
 
-    for i in range(10):
+    for i in range(1000000):
         num_samples = np.random.randint(1,10,(1,))[0]
         x_batch = np.random.random((num_samples, 1024))
-        y_batch = sess.run(outputs, feed_dict={inputs: x_batch})
-        print(x_batch.shape, y_batch.shape)
+        t_batch = np.zeros((1,1024))
+        t_batch[0,np.random.randint(1,10,(1,))[0]] = 1
+        [y_batch, cost, _, acc] = sess.run([outputs, loss, optimizer, accuracy], feed_dict={inputs: x_batch, labels: t_batch})
+        print(np.argmax(y_batch, axis=1), cost, acc)
 
     sess.close()
 
@@ -131,5 +137,5 @@ def attention_test_keras():
         print(y_batch.mean(axis=0))
 
 if __name__ == '__main__':
-    # attention_test_tf()
-    attention_test_keras()
+    attention_test_tf()
+    # attention_test_keras()
