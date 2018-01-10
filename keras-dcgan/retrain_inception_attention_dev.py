@@ -21,7 +21,7 @@ from keras.applications.inception_v3 import InceptionV3
 # from keras.applications.xception import Xception
 
 '''retrain inception_v3_attention with hmdb51'''
-import attention
+import attention_dev as attention
 import retrain_inception_v3 as inception
 import data_utils
 ''''''
@@ -50,14 +50,25 @@ def build(classes):
     topless_model = Model(model.input, model.layers[-2].output)
 
     # TODO: how to merger Inception_v3 and AttentionBlock ???
-    # add attention layer
-    inputs = Input(shape=args.input_shape)
+    # # add attention layer
+    # inputs = Input(shape=args.input_shape)
+    # x = inputs
+    # x = topless_model(x)
+    # x = attention.SingleAttentionBlock(1)(x)
+    # x = attention.CascadedAttentionBlock(1024)(x)
+    # x = Dense(len(classes), activation='softmax', name='predictions')(x)
+    # outputs = x
+    # model = Model(inputs, outputs)
+
+    # attention model
+    inputs = Input(batch_shape=(1,None,1024))
     x = inputs
-    x = topless_model(x)
     x = attention.SingleAttentionBlock(1)(x)
     x = attention.CascadedAttentionBlock(1024)(x)
+    x = Lambda(lambda x: keras.squeeze(x, axis=1))(x)
     x = Dense(len(classes), activation='softmax', name='predictions')(x)
     outputs = x
+
     model = Model(inputs, outputs)
 
     return topless_model, model
@@ -68,29 +79,30 @@ def valid(args, classes, base_model, model):
 
 def train_test_keras(args, classes, base_model, model):
     # base_model.trainable = False
-    model.summary()
     model.compile(optimizer=RMSprop(lr=0.001), loss=categorical_crossentropy, metrics=[categorical_accuracy])
+    model.summary()
 
     import data_utils_mini as data_utils
     image_dict = data_utils.get_image_lists('../images')
     image_generator = data_utils.iter_mini_batches_for_dcgan(args.input_shape, image_dict['train'], batch_size=args.batch_size)
     for _, image_batch in image_generator:
-        np.random.seed(20180110)
-        noise_batch = np.random.random((image_batch.shape))
-        noise_batch = (noise_batch * 127.5 + 127.5).astype(np.uint8)
-        label_batch = np.zeros((image_batch.shape[0],51))
+        num_samples = np.random.randint(15,30,(1,))[0]
+        input_batch = np.random.random((1, num_samples, 1024))
+        label_batch = np.zeros((1,51))
         label_batch[:,4] = 1
-        print(np.argmax(model.predict(noise_batch), axis=1))
-        loss, acc = model.train_on_batch(noise_batch, label_batch)
-        print(np.argmax(model.predict(noise_batch), axis=1))
+        print(np.argmax(model.predict(input_batch), axis=1))
+        loss, acc = model.train_on_batch(input_batch, label_batch)
+        print(np.argmax(model.predict(input_batch), axis=1))
         print('loss: %f, acc: %f'%(loss, acc))
 
-        label_batch = np.zeros((image_batch.shape[0],51))
+        input_batch = base_model.predict(image_batch)
+        input_batch = np.expand_dims(input_batch, axis=0)
+        label_batch = np.zeros((1,51))
         label_batch[:,2] = 1
-        print(np.argmax(model.predict(image_batch), axis=1))
-        loss, acc = model.train_on_batch(image_batch, label_batch)
-        print(np.argmax(model.predict(image_batch), axis=1))
-        print('loss: %f, acc: %f' % (loss, acc))
+        print(np.argmax(model.predict(input_batch), axis=1))
+        loss, acc = model.train_on_batch(input_batch, label_batch)
+        print(np.argmax(model.predict(input_batch), axis=1))
+        print('loss: %f, acc: %f'%(loss, acc))
 
         print('\n')
 
@@ -159,9 +171,11 @@ def main(args):
     # else:
     #     raise ValueError('--mode [train | infer]')
 
-    train_test(args, classes, base_model, model)
+    train_test_keras(args, classes, base_model, model)
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
+    assert  args.device == 'cpu'
+
     if args.device == 'cpu':
         with tf.device('/cpu:0'):
             main(args)

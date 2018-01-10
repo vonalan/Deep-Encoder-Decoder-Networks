@@ -115,6 +115,39 @@ def create_image_list(image_dir, video_dicts, category, classes):
             image_dist[classes.index(dir)] += len(images)
     return len(image_list), image_dist, image_list
 
+def iter_mini_batches_for_attention(args, category, classes, batch_size=1, shuffle=True):
+    assert batch_size == 1
+
+    # TODO: shuffle, resize, crop, flip, distort, blur, ...
+    video_dicts = create_video_dicts(args.video_dir, args.split_dir, sround=args.split_round)
+    # _, _, image_list = create_image_list(args.image_dir, video_dicts, category)
+    _,_, video_list = create_video_list(args.video_dir, video_dicts, category, classes)
+
+    while True:
+        if shuffle:
+            random.seed()
+            random.shuffle(video_list)
+        num_batchs = int(math.ceil(len(video_list) / float(batch_size)))
+        for batch in range(num_batchs):
+            sidx = max(0, batch * batch_size)
+            eidx = min(len(video_list), (batch + 1) * batch_size)
+            num_cur_batch = eidx - sidx
+
+            video_batch = []
+            label_batch = []
+            for idx in range(num_cur_batch):
+                video_path = video_list[sidx + idx][0]
+                image_dir = video_path.replace('hmdb51_org', 'hmdb51_org_images')
+                images = [cv2.resize(cv2.imread(os.path.join(image_dir, image)), args.input_shape[:2]) for image in os.listdir(image_dir)]
+                label = [0] * 51
+                label[video_list[sidx + idx][0]] = 1
+                video_batch.append(images)
+                label_batch.append(label)
+            video_batch = np.array(video_batch)
+            label_batch = np.array(label_batch)
+            print(video_batch.shape, label_batch.shape)
+            yield video_batch, label_batch
+
 def iter_mini_batches(args, category, num_classes, batch_size=4, shuffle=True):
     '''
     data generator for classification problems.

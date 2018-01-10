@@ -8,6 +8,9 @@ from keras.models import Model
 from keras import backend as keras
 from keras.activations import softmax, tanh
 from keras.engine.topology import Layer
+from keras.optimizers import SGD
+from keras.losses import categorical_crossentropy
+from keras.metrics import categorical_accuracy
 
 
 def single_attention_block(inputs):
@@ -61,6 +64,8 @@ class SingleAttentionBlock(Layer):
         :param x:[1,None, 1024]
         :return: [1,1,1024]
         '''
+
+        # TODO: [None, None, 1024]
         x = keras.squeeze(x, axis=0) # [None,1024]
         inputs = x
         x = keras.dot(x, self.kernel)
@@ -103,6 +108,8 @@ class CascadedAttentionBlock(Layer):
         :param x:[1,1,1024]
         :return: [1,1,1024]
         '''
+
+        # TODO: [None, 1, 1024]
         x = keras.squeeze(x, axis=0) # [1,1024]
         x = keras.bias_add(keras.dot(x, self.kernel), self.bias)
         x = tanh(x)
@@ -147,19 +154,23 @@ def attention_test_keras():
 
     x = SingleAttentionBlock(1)(x)
     x = CascadedAttentionBlock(1024)(x)
+    x = Lambda(lambda x: keras.squeeze(x, axis=1))(x)
+    x = Dense(2, activation=softmax)(x)
 
     outputs = x
     model = Model(inputs, outputs)
     model.summary()
 
+    model.compile(optimizer=SGD(), loss=categorical_crossentropy, metrics=[categorical_accuracy])
+
     '''Keras is disgusting!!!'''
     # TODO: model.output.shape != sess.run(model.output).shape ???
-    for i in range(10):
+    for i in range(100):
         num_samples = np.random.randint(1,10,(1,))[0]
         x_batch = np.random.random((1, num_samples, 1024))
-        y_batch = model.predict(x_batch)
-        print(x_batch.shape, y_batch.shape)
-        print(y_batch)
+        y_batch = np.random.randint(0,2,(1,2))
+        loss, acc = model.train_on_batch(x_batch, y_batch)
+        print('loss: %f, acc: %f'%(loss, acc))
 
 if __name__ == '__main__':
     # attention_test_tf()
