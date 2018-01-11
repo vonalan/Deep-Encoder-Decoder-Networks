@@ -78,7 +78,8 @@ def infer(args, classes, base_model, model):
             flag = 1 if ys_true[i] == ys_pred[i] else 0
             count[flag] += 1
             print('y_true: %d, y_pred: %d, flag: %d'%(ys_true[i], ys_pred[i], flag))
-    print(count)
+        print(batch, count)
+
 
 def train(args, classes, base_model, model):
     save_model_path = os.path.join(args.logdir, "trained_models")
