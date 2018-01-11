@@ -189,6 +189,7 @@ def train(args, classes, base_model, model):
             valid_count = valid_count + feat_batch.shape[0]
             valid_loss = valid_loss / valid_count
             valid_acc = valid_acc / valid_count
+            print('epoch_%4d--batch_%4d--validloss_%.5f--validacc_%.5f_validloss_%.5f--validacc_%.5f' % (epoch + 1, batch + 1, loss, acc, valid_loss, valid_acc))
 
         checkpointer = os.path.join(save_model_path, "epoch_%4d--trainloss_%.5f--valloss_%.5f.hdf5"%(epoch+1, train_loss, valid_loss))
         model.save_weights(checkpointer)
