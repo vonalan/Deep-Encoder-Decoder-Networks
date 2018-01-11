@@ -20,11 +20,6 @@ from keras.applications.inception_v3 import InceptionV3
 # from keras.applications.inception_resnet_v2 import InceptionResNetV2
 # from keras.applications.xception import Xception
 
-'''retrain inception_v3_attention with hmdb51'''
-import attention
-import retrain_inception_v3 as inception
-import data_utils
-''''''
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
@@ -44,12 +39,44 @@ parser.add_argument('--train_steps', default=2000, type=int)
 parser.add_argument('--val_steps', default=500, type=int)
 args, _ = parser.parse_known_args()
 
+
+'''retrain inception_v3_attention with hmdb51'''
+import attention as attention
+import retrain_inception_v3 as inception
+import data_utils
+''''''
+
+
 def build(classes):
     # inception_v3 retrained with hmdb51
     base_model, model = inception.build(classes, weights=None)
     topless_model = Model(model.input, model.layers[-2].output)
 
-    # TODO: how to merger Inception_v3 and AttentionBlock ???
+    # unified model
+    # TODO: but can't be trained???
+    inputs = Input(batch_shape=(tuple([1, None] + list(args.input_shape))))
+    x = inputs
+
+    x = Lambda(lambda x: keras.squeeze(x, axis=0))(x)
+    x = topless_model(x)
+
+    x = attention.SingleAttentionBlock(1)(x)
+    x = attention.CascadedAttentionBlock(1024)(x)
+
+    x = Dense(len(classes), activation='softmax', name='predictions')(x)
+    outputs = x
+
+    model = Model(inputs, outputs)
+
+    return base_model, model
+
+
+def build_old(classes):
+    # inception_v3 retrained with hmdb51
+    base_model, model = inception.build(classes, weights=None)
+    topless_model = Model(model.input, model.layers[-2].output)
+
+    # TODO: how to build a unified model???
     # add attention layer
     inputs = Input(shape=args.input_shape)
     x = inputs
@@ -67,24 +94,26 @@ def valid(args, classes, base_model, model):
     pass
 
 def train_test_keras(args, classes, base_model, model):
-    # base_model.trainable = False
+    base_model.trainable = False
     model.summary()
-    model.compile(optimizer=RMSprop(lr=0.001), loss=categorical_crossentropy, metrics=[categorical_accuracy])
+    model.compile(optimizer=RMSprop(lr=1e-2), loss=categorical_crossentropy, metrics=[categorical_accuracy])
 
     import data_utils_mini as data_utils
     image_dict = data_utils.get_image_lists('../images')
     image_generator = data_utils.iter_mini_batches_for_dcgan(args.input_shape, image_dict['train'], batch_size=args.batch_size)
     for _, image_batch in image_generator:
-        np.random.seed(20180110)
+        # np.random.seed(20180110)
         noise_batch = np.random.random((image_batch.shape))
         noise_batch = (noise_batch * 127.5 + 127.5).astype(np.uint8)
-        label_batch = np.zeros((image_batch.shape[0],51))
+        noise_batch = np.expand_dims(noise_batch, axis=0)
+        label_batch = np.zeros((noise_batch.shape[0],51))
         label_batch[:,4] = 1
         print(np.argmax(model.predict(noise_batch), axis=1))
         loss, acc = model.train_on_batch(noise_batch, label_batch)
         print(np.argmax(model.predict(noise_batch), axis=1))
         print('loss: %f, acc: %f'%(loss, acc))
 
+        image_batch = np.expand_dims(image_batch, axis=0)
         label_batch = np.zeros((image_batch.shape[0],51))
         label_batch[:,2] = 1
         print(np.argmax(model.predict(image_batch), axis=1))
@@ -94,8 +123,17 @@ def train_test_keras(args, classes, base_model, model):
 
         print('\n')
 
-def infer(args, classes, base_model, model):
-    pass
+def infer_test_keras(args, classes, base_model, model):
+    import data_utils_mini as data_utils
+    image_dict = data_utils.get_image_lists('../images')
+    image_generator = data_utils.iter_mini_batches_for_dcgan(args.input_shape, image_dict['train'],
+                                                             batch_size=args.batch_size)
+    for _, image_batch in image_generator:
+        image_batch = np.expand_dims(image_batch, axis=0)
+        label_batch = model.predict(image_batch)
+        print(label_batch, np.argmax(label_batch, axis=1))
+
+        print('\n')
 
 
 def train(args, classes, base_model, model):
@@ -151,15 +189,15 @@ def main(args):
 
     if args.init_weights_path is not None:
         model.load_weights(args.init_weights_path, by_name=True)
-    
+
+    infer_test_keras(args, classes, base_model, model)
+
     # if args.mode == 'train':
     #     train(args, classes, base_model, model)
     # elif args.mode == 'infer':
     #     pass
     # else:
     #     raise ValueError('--mode [train | infer]')
-
-    train_test(args, classes, base_model, model)
 
 if __name__ == '__main__': 
     if args.device == 'cpu':
