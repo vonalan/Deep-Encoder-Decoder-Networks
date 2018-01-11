@@ -115,19 +115,20 @@ def create_image_list(image_dir, video_dicts, category, classes):
             image_dist[classes.index(dir)] += len(images)
     return len(image_list), image_dist, image_list
 
-def iter_mini_batches_for_attention(args, model, category, classes, batch_size=1, shuffle=True):
+def iter_mini_batches_for_attention(args, model, category, classes, batch_size=1, shuffle=True, infinite=True):
     assert batch_size == 1
 
     # TODO: shuffle, resize, crop, flip, distort, blur, ...
     video_dicts = create_video_dicts(args.video_dir, args.split_dir, sround=args.split_round)
     # _, _, image_list = create_image_list(args.image_dir, video_dicts, category)
     _,_, video_list = create_video_list(args.video_dir, video_dicts, category, classes)
-    print(len(video_list))
+    # print(len(video_list))
 
     # TODO: Abstraction
     # TODO: where to place this block???
+    # TODO: why goes wrong in model.fit_generator()???
     init_weights_path = '../temp/trained_models/epoch_1100--trainloss_0.03330--valloss_6.74739.hdf5'
-    print('initializing incption_v3 model from pretrained weights...')
+    # print('initializing incption_v3 model from pretrained weights...')
     print(init_weights_path)
     model.load_weights(init_weights_path, by_name=True)
 
@@ -154,8 +155,10 @@ def iter_mini_batches_for_attention(args, model, category, classes, batch_size=1
                 label_batch.append(label)
             video_batch = np.array(video_batch)
             label_batch = np.array(label_batch)
-            print(video_batch.shape, label_batch.shape)
+            # print(video_batch.shape, label_batch.shape)
             yield video_batch, label_batch
+        if not infinite:
+            break
 
 def iter_mini_batches(args, category, classes, batch_size=4, shuffle=True):
     '''

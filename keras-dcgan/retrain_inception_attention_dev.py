@@ -156,6 +156,50 @@ def train(args, classes, base_model, model):
     save_model_path = os.path.join(args.logdir, "trained_models")
     if not os.path.exists(save_model_path): os.makedirs(save_model_path)
 
+    model.summary()
+    model.compile(optimizer=RMSprop(lr=1e-3), loss=categorical_crossentropy, metrics=[categorical_accuracy])
+
+    for epoch in itertools.count():
+        train_generator = data_utils.iter_mini_batches_for_attention(args, base_model, 'training', classes,
+                                                                     batch_size=args.batch_size, infinite=False)
+        valid_generator = data_utils.iter_mini_batches_for_attention(args, base_model, 'validation', classes,
+                                                                     batch_size=args.batch_size, infinite=False)
+
+        # # TODO: tensorboard
+        # # TODO: moving average
+        train_loss = 0.0
+        train_acc = 0.0
+        train_count = 0
+        for batch, (feat_batch, label_batch) in enumerate(train_generator):
+            loss, acc = model.train_on_batch(feat_batch, label_batch)
+            train_acc = train_acc * train_count + acc * feat_batch.shape[0]
+            train_loss = train_loss * train_count + loss * feat_batch.shape[0]
+            train_count = train_count + feat_batch.shape[0]
+            train_loss = train_loss / train_count
+            train_acc = train_acc / train_count
+            print('epoch_%4d--batch_%4d--trainloss_%.5f--trainacc_%.5f_trainloss_%.5f--trainacc_%.5f'%(epoch+1, batch+1, loss, acc, train_loss, train_acc))
+
+        valid_loss = 0.0
+        valid_acc = 0.0
+        valid_count = 0
+        for batch, (feat_batch, label_batch) in enumerate(valid_generator):
+            loss, acc = model.test_on_batch(feat_batch, label_batch)
+            valid_acc = valid_acc * valid_count + acc * feat_batch.shape[0]
+            valid_loss = valid_loss * valid_loss + loss * feat_batch.shape[0]
+            valid_count = valid_count + feat_batch.shape[0]
+            valid_loss = valid_loss / valid_count
+            valid_acc = valid_acc / valid_count
+
+        checkpointer = os.path.join(save_model_path, "epoch_%4d--trainloss_%.5f--valloss_%.5f.hdf5"%(epoch+1, train_loss, valid_loss))
+        model.save_weights(checkpointer)
+        print("epoch_%4d--trainloss_%.5f--trainacc_%.5f_valloss_%.5f_validacc_%.5f" % (epoch + 1, train_loss, train_acc, valid_loss, valid_acc))
+        print('\n')
+
+
+def train_v1(args, classes, base_model, model):
+    save_model_path = os.path.join(args.logdir, "trained_models")
+    if not os.path.exists(save_model_path): os.makedirs(save_model_path)
+
     # define callbacks
     # reduce_lr=ReduceLROnPlateau(monitor="val_loss", factor=args.lr_decay_mult"], patience=2)
     csv_logger = CSVLogger(filename=os.path.join(args.logdir, "history.log"))
