@@ -125,7 +125,8 @@ def iter_mini_batches_for_attention(args, model, category, classes, batch_size=1
     print(len(video_list))
 
     # TODO: Abstraction
-    init_weights_path = '../temp/trained_models/epoch_1220--trainloss_0.03029--valloss_6.78359.hdf5'
+    # TODO: where to place this block???
+    init_weights_path = '../temp/trained_models/epoch_1100--trainloss_0.03330--valloss_6.74739.hdf5'
     print('initializing incption_v3 model from pretrained weights...')
     print(init_weights_path)
     model.load_weights(init_weights_path, by_name=True)

@@ -124,7 +124,8 @@ def train_test_keras(args, classes, base_model, model):
         num_samples = np.random.randint(15, 30, (1,))[0]
         input_batch = np.random.random((1, num_samples, 1024))
         label_batch = np.zeros((1, 51))
-        label_batch[:, 4] = 1
+        idx = np.random.randint(0, 51, (1,))[0]
+        label_batch[:,idx] = 1
         print(np.argmax(model.predict(input_batch), axis=1))
         loss, acc = model.train_on_batch(input_batch, label_batch)
         print(np.argmax(model.predict(input_batch), axis=1))
@@ -208,7 +209,7 @@ def main(args):
     if args.init_weights_path is not None:
         model.load_weights(args.init_weights_path, by_name=True)
 
-    train_test_keras(args, classes, base_model, model)
+    # train_test_keras(args, classes, base_model, model)
 
     if args.mode == 'train':
         train(args, classes, base_model, model)

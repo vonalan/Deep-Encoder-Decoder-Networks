@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
 parser.add_argument('--device', default='gpu', type=str)
 parser.add_argument('--base_model', default='vgg16', type=str)
-parser.add_argument('--input_shape', default=(224,224,3), type=tuple)
+parser.add_argument('--input_shape', default=(224, 224, 3), type=tuple)
 # parser.add_argument('--classes_path', default='../data/hmdb51_classes.txt', type=str)
 # parser.add_argument('--split_dir', default='../testTrainMulti_7030_splits/')
 # parser.add_argument('--split_round', default='1', type=str)
@@ -40,7 +40,9 @@ args, _ = parser.parse_known_args()
 
 '''run deconvnet_dcgan with temp images'''
 import deconvnet_dcgan as deconvnet
+import custom_losses as custom_losses
 ''''''
+
 
 def get_image_lists(args):
     image_list = os.listdir(args.image_dir)
@@ -55,6 +57,7 @@ def get_image_lists(args):
     image_dict['valid'] = image_list[idx1:idx2]
     image_dict['infer'] = image_list[idx2:]
     return image_dict
+
 
 def iter_mini_batches(args, image_list, batch_size=4, shuffle=True):
     while True:
@@ -75,12 +78,14 @@ def iter_mini_batches(args, image_list, batch_size=4, shuffle=True):
                 # print(image_batch[idx].shape, label_batch[idx])
             yield image_batch, image_batch
 
+
 def build(args):
     base_model = None
     model = deconvnet.deconvnet(args.input_shape)
     for i, layer in enumerate(model.layers):
         print(i, layer.name)
     return base_model, model
+
 
 def main(args):
     base_model, model = build(args)
@@ -96,7 +101,11 @@ def main(args):
     else:
         raise ValueError('--mode [train | infer]')
 
+
 def infer(args, image_dict, base_model, model):
+    save_image_path = os.path.join(args.logdir, "outputs")
+    if not os.path.exists(save_image_path): os.makedirs(save_image_path)
+
     for i, image_path in enumerate(image_dict['infer']):
         if i >= 10: break
         raw_rgbs = cv2.resize(cv2.imread(image_path), args.input_shape[:2])
@@ -105,7 +114,8 @@ def infer(args, image_dict, base_model, model):
         print(raw_rgbs.shape, pred_rgbs.shape)
         composed = np.concatenate((raw_rgbs[0], pred_rgbs[0]), axis=1)
         composed = composed.astype(np.uint8)
-        cv2.imwrite(os.path.join(args.output_dir, '%d.jpg'%(i+1)), composed)
+        cv2.imwrite(os.path.join(args.output_dir, '%d.jpg' % (i + 1)), composed)
+
 
 def train(args, image_dict, base_model, model):
     save_model_path = os.path.join(args.logdir, "trained_models")
@@ -126,36 +136,39 @@ def train(args, image_dict, base_model, model):
     # step 01
     # for i, layer in enumerate(base_model.layers):
     #     layer.trainable = False
-    optimizer = SGD(lr=1e-5, momentum=9e-1, decay=1e-6)
+    optimizer = SGD(lr=1e-4, momentum=9e-1, decay=1e-6) # 1e-5
     model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_error])
     model.fit_generator(generator=train_generator,
-                              steps_per_epoch=args.train_steps,
-                              epochs=args.epoches,
-                              validation_data=valid_generator,
-                              validation_steps=args.val_steps,
-                              max_q_size=100, # 100
-                              workers=1, # num_gpus/num_cpus
-                              # pickle_safe=True,
-                              callbacks=[csv_logger, checkpointer, tensorboard]
-                              )
+                        steps_per_epoch=args.train_steps,
+                        epochs=args.epoches,
+                        validation_data=valid_generator,
+                        validation_steps=args.val_steps,
+                        max_q_size=100,  # 100
+                        workers=1,  # num_gpus/num_cpus
+                        #  pickle_safe=True,
+                        callbacks=[csv_logger, checkpointer, tensorboard],
+                        initial_epoch=121
+                        )
 
     # # step 02
-    # for i, layer in enumerate(base_model.layers):
-    #     layer.trainable=True
-    # optimizer = SGD(lr=1e-5, momentum=9e-1, decay=1e-6)
-    # model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_error])
+    # # for i, layer in enumerate(base_model.layers):
+    # #     layer.trainable = True
+    # optimizer = SGD(lr=1e-5, momentum=9e-1, decay=1e-6) # 1e-5
+    # model.compile(optimizer=optimizer, loss=mean_squared_logarithmic_error, metrics=[mean_squared_logarithmic_error])
     # model.fit_generator(generator=train_generator,
-    #                           steps_per_epoch=args.train_steps,
-    #                           epochs=args.epoches,
-    #                           validation_data=valid_generator,
-    #                           validation_steps=args.val_steps,
-    #                           max_q_size=100, # 100
-    #                           workers=1, # num_gpus/num_cpus
-    #                         #   pickle_safe=True,
-    #                           callbacks=[csv_logger, checkpointer, tensorboard]
-    #                           )
+    #                     steps_per_epoch=args.train_steps,
+    #                     epochs=args.epoches,
+    #                     validation_data=valid_generator,
+    #                     validation_steps=args.val_steps,
+    #                     max_q_size=100,  # 100
+    #                     workers=1,  # num_gpus/num_cpus
+    #                     # pickle_safe=True,
+    #                     callbacks=[csv_logger, checkpointer, tensorboard],
+    #                     initial_epoch=121
+    #                     )
 
-if __name__ == '__main__': 
+
+if __name__ == '__main__':
     if args.device == 'cpu':
         with tf.device('/cpu:0'):
             main(args)

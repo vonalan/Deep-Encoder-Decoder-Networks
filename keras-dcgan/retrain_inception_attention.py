@@ -17,6 +17,7 @@ from keras.callbacks import ModelCheckpoint, CSVLogger, LearningRateScheduler, T
 # from keras.applications.vgg19 import VGG19
 # from keras.applications.resnet50 import ResNet50
 from keras.applications.inception_v3 import InceptionV3
+
 # from keras.applications.inception_resnet_v2 import InceptionResNetV2
 # from keras.applications.xception import Xception
 
@@ -25,7 +26,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
 parser.add_argument('--device', default='gpu', type=str)
 parser.add_argument('--base_model', default='inception_v3', type=str)
-parser.add_argument('--input_shape', default=(299,299,3), type=tuple)
+parser.add_argument('--input_shape', default=(299, 299, 3), type=tuple)
 parser.add_argument('--classes_path', default='../data/hmdb51_classes.txt', type=str)
 parser.add_argument('--split_dir', default='../testTrainMulti_7030_splits/')
 parser.add_argument('--split_round', default='1', type=str)
@@ -39,11 +40,11 @@ parser.add_argument('--train_steps', default=2000, type=int)
 parser.add_argument('--val_steps', default=500, type=int)
 args, _ = parser.parse_known_args()
 
-
 '''retrain inception_v3_attention with hmdb51'''
 import attention as attention
 import retrain_inception_v3 as inception
 import data_utils
+
 ''''''
 
 
@@ -93,6 +94,7 @@ def build_old(classes):
 def valid(args, classes, base_model, model):
     pass
 
+
 def train_test_keras(args, classes, base_model, model):
     base_model.trainable = False
     model.summary()
@@ -100,28 +102,34 @@ def train_test_keras(args, classes, base_model, model):
 
     import data_utils_mini as data_utils
     image_dict = data_utils.get_image_lists('../images')
-    image_generator = data_utils.iter_mini_batches_for_dcgan(args.input_shape, image_dict['train'], batch_size=args.batch_size)
+    image_generator = data_utils.iter_mini_batches_for_dcgan(args.input_shape, image_dict['train'],
+                                                             batch_size=args.batch_size)
     for _, image_batch in image_generator:
         # np.random.seed(20180110)
         noise_batch = np.random.random((image_batch.shape))
         noise_batch = (noise_batch * 127.5 + 127.5).astype(np.uint8)
         noise_batch = np.expand_dims(noise_batch, axis=0)
-        label_batch = np.zeros((noise_batch.shape[0],51))
-        label_batch[:,4] = 1
-        print(np.argmax(model.predict(noise_batch), axis=1))
+        label_batch = np.zeros((noise_batch.shape[0], 51))
+        idx = np.random.randint(0, 51, (1,))[0]
+        label_batch[:,idx] = 1
+        b_label = model.predict(noise_batch)
         loss, acc = model.train_on_batch(noise_batch, label_batch)
-        print(np.argmax(model.predict(noise_batch), axis=1))
-        print('loss: %f, acc: %f'%(loss, acc))
+        a_label = model.predict(noise_batch)
+        print(np.argmax(label_batch, axis=1), np.argmax(b_label, axis=1), np.argmax(a_label, axis=1))
+        print('loss: %f, acc: %f' % (loss, acc))
 
+        image_batch = (image_batch * 127.5 + 127.5).astype(np.uint8)
         image_batch = np.expand_dims(image_batch, axis=0)
-        label_batch = np.zeros((image_batch.shape[0],51))
-        label_batch[:,2] = 1
-        print(np.argmax(model.predict(image_batch), axis=1))
+        label_batch = np.zeros((image_batch.shape[0], 51))
+        label_batch[:,0] = 1
+        b_label = model.predict(image_batch)
         loss, acc = model.train_on_batch(image_batch, label_batch)
-        print(np.argmax(model.predict(image_batch), axis=1))
+        a_label = model.predict(image_batch)
+        print(np.argmax(label_batch, axis=1), np.argmax(b_label, axis=1), np.argmax(a_label, axis=1))
         print('loss: %f, acc: %f' % (loss, acc))
 
         print('\n')
+
 
 def infer_test_keras(args, classes, base_model, model):
     import data_utils_mini as data_utils
@@ -131,9 +139,8 @@ def infer_test_keras(args, classes, base_model, model):
     for _, image_batch in image_generator:
         image_batch = np.expand_dims(image_batch, axis=0)
         label_batch = model.predict(image_batch)
-        print(label_batch, np.argmax(label_batch, axis=1))
-
-        print('\n')
+        print(image_batch.shape, label_batch.shape, label_batch.min(), label_batch.max(),
+              np.argmax(label_batch, axis=1))
 
 
 def train(args, classes, base_model, model):
@@ -155,32 +162,33 @@ def train(args, classes, base_model, model):
     # step 01
     base_model.trainable = False
     model.summary()
-    model.compile(optimizer=RMSprop(lr=0.001), loss=categorical_crossentropy, metrics=[categorical_accuracy])
+    model.compile(optimizer=RMSprop(lr=1e-3), loss=categorical_crossentropy, metrics=[categorical_accuracy])
     model.fit_generator(generator=train_generator,
-                              steps_per_epoch=args.train_steps,
-                              epochs=args.epoches,
-                              validation_data=valid_generator,
-                              validation_steps=args.val_steps,
-                              max_q_size=100, # 100
-                              workers=1, # num_gpus/num_cpus
-                            #   pickle_safe=True,
-                              callbacks=[csv_logger, checkpointer, tensorboard]
-                              )
+                        steps_per_epoch=args.train_steps,
+                        epochs=args.epoches,
+                        validation_data=valid_generator,
+                        validation_steps=args.val_steps,
+                        max_q_size=100,  # 100
+                        workers=1,  # num_gpus/num_cpus
+                        #   pickle_safe=True,
+                        callbacks=[csv_logger, checkpointer, tensorboard]
+                        )
 
     # step 02
     base_model.trainable = True
     model.summary()
     model.compile(optimizer=SGD(lr=1e-4, momentum=9e-1), loss=categorical_crossentropy, metrics=[categorical_accuracy])
     model.fit_generator(generator=train_generator,
-                              steps_per_epoch=args.train_steps,
-                              epochs=args.epoches,
-                              validation_data=valid_generator,
-                              validation_steps=args.val_steps,
-                              max_q_size=100, # 100
-                              workers=1, # num_gpus/num_cpus
-                            #   pickle_safe=True,
-                              callbacks=[csv_logger, checkpointer, tensorboard]
-                              )
+                        steps_per_epoch=args.train_steps,
+                        epochs=args.epoches,
+                        validation_data=valid_generator,
+                        validation_steps=args.val_steps,
+                        max_q_size=100,  # 100
+                        workers=1,  # num_gpus/num_cpus
+                        #   pickle_safe=True,
+                        callbacks=[csv_logger, checkpointer, tensorboard]
+                        )
+
 
 def main(args):
     classes = data_utils.get_classes(args.classes_path)
@@ -190,7 +198,8 @@ def main(args):
     if args.init_weights_path is not None:
         model.load_weights(args.init_weights_path, by_name=True)
 
-    infer_test_keras(args, classes, base_model, model)
+    train_test_keras(args, classes, base_model, model)
+    # infer_test_keras(args, classes, base_model, model)
 
     # if args.mode == 'train':
     #     train(args, classes, base_model, model)
@@ -199,7 +208,8 @@ def main(args):
     # else:
     #     raise ValueError('--mode [train | infer]')
 
-if __name__ == '__main__': 
+
+if __name__ == '__main__':
     if args.device == 'cpu':
         with tf.device('/cpu:0'):
             main(args)
