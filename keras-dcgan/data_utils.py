@@ -115,13 +115,20 @@ def create_image_list(image_dir, video_dicts, category, classes):
             image_dist[classes.index(dir)] += len(images)
     return len(image_list), image_dist, image_list
 
-def iter_mini_batches_for_attention(args, category, classes, batch_size=1, shuffle=True):
+def iter_mini_batches_for_attention(args, model, category, classes, batch_size=1, shuffle=True):
     assert batch_size == 1
 
     # TODO: shuffle, resize, crop, flip, distort, blur, ...
     video_dicts = create_video_dicts(args.video_dir, args.split_dir, sround=args.split_round)
     # _, _, image_list = create_image_list(args.image_dir, video_dicts, category)
     _,_, video_list = create_video_list(args.video_dir, video_dicts, category, classes)
+    print(len(video_list))
+
+    # TODO: Abstraction
+    init_weights_path = '../temp/trained_models/epoch_1220--trainloss_0.03029--valloss_6.78359.hdf5'
+    print('initializing incption_v3 model from pretrained weights...')
+    print(init_weights_path)
+    model.load_weights(init_weights_path, by_name=True)
 
     while True:
         if shuffle:
@@ -139,16 +146,17 @@ def iter_mini_batches_for_attention(args, category, classes, batch_size=1, shuff
                 video_path = video_list[sidx + idx][0]
                 image_dir = video_path.replace('hmdb51_org', 'hmdb51_org_images')
                 images = [cv2.resize(cv2.imread(os.path.join(image_dir, image)), args.input_shape[:2]) for image in os.listdir(image_dir)]
+                feats_batch = model.predict(np.array(images))
                 label = [0] * 51
-                label[video_list[sidx + idx][0]] = 1
-                video_batch.append(images)
+                label[video_list[sidx + idx][1]] = 1
+                video_batch.append(feats_batch)
                 label_batch.append(label)
             video_batch = np.array(video_batch)
             label_batch = np.array(label_batch)
             print(video_batch.shape, label_batch.shape)
             yield video_batch, label_batch
 
-def iter_mini_batches(args, category, num_classes, batch_size=4, shuffle=True):
+def iter_mini_batches(args, category, classes, batch_size=4, shuffle=True):
     '''
     data generator for classification problems.
     :param args:
@@ -160,7 +168,7 @@ def iter_mini_batches(args, category, num_classes, batch_size=4, shuffle=True):
     '''
     # TODO: shuffle, resize, crop, flip, distort, blur, ...
     video_dicts = create_video_dicts(args.video_dir, args.split_dir, sround=args.split_round)
-    _, _, image_list = create_image_list(args.image_dir, video_dicts, category)
+    _, _, image_list = create_image_list(args.image_dir, video_dicts, category, classes)
 
     while True:
         if shuffle:
@@ -173,14 +181,14 @@ def iter_mini_batches(args, category, num_classes, batch_size=4, shuffle=True):
             eidx = min(len(image_list), (batch + 1) * batch_size)
             num_cur_batch = eidx - sidx
             image_batch = np.zeros(tuple([batch_size] + list(args.input_shape)))
-            label_batch = np.zeros(tuple([batch_size] + [num_classes]))
+            label_batch = np.zeros(tuple([batch_size] + [len(classes)]))
             for idx in range(num_cur_batch):
                 image_batch[idx] = cv2.resize(cv2.imread(image_list[sidx + idx][0]), args.input_shape[:2])
                 label_batch[idx][image_list[sidx + idx][1]] = 1
                 # print(image_batch[idx].shape, label_batch[idx])
             yield image_batch, label_batch
 
-def iter_mini_batches_for_deconvnet(args, category, num_classes, batch_size=4, shuffle=True):
+def iter_mini_batches_for_deconvnet(args, category, classes, batch_size=4, shuffle=True):
     '''
     data generator for deconvet and dcgan.
     :param args:
@@ -192,7 +200,7 @@ def iter_mini_batches_for_deconvnet(args, category, num_classes, batch_size=4, s
     '''
     # TODO: shuffle, resize, crop, flip, distort, blur, ...
     video_dicts = create_video_dicts(args.video_dir, args.split_dir, sround=args.split_round)
-    _, _, image_list = create_image_list(args.image_dir, video_dicts, category)
+    _, _, image_list = create_image_list(args.image_dir, video_dicts, category, classes)
 
     while True:
         if shuffle:
@@ -205,7 +213,7 @@ def iter_mini_batches_for_deconvnet(args, category, num_classes, batch_size=4, s
             eidx = min(len(image_list), (batch + 1) * batch_size)
             num_cur_batch = eidx - sidx
             image_batch = np.zeros(tuple([batch_size] + list(args.input_shape)))
-            label_batch = np.zeros(tuple([batch_size] + [num_classes]))
+            label_batch = np.zeros(tuple([batch_size] + [len(classes)]))
             for idx in range(num_cur_batch):
                 image_batch[idx] = cv2.resize(cv2.imread(image_list[sidx + idx][0]), args.input_shape[:2])
                 label_batch[idx][image_list[sidx + idx][1]] = 1

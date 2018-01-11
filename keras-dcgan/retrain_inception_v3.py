@@ -49,13 +49,36 @@ def build(classes, weights=None):
     predictions = Dense(len(classes), activation='softmax', name='predictions')(x)
     model = Model(inputs=base_model.input, outputs=predictions, name='inception_v3')
 
+    # # TODO: call base_model
+    # inputs = Input(shape=args.input_shape)
+    # x = inputs
+    # x = base_model(x)
+    # x = GlobalAveragePooling2D()(x)
+    # x = Dense(1024, activation='relu', name='fc_layer')(x)
+    # predictions = Dense(len(classes), activation='softmax', name='predictions')(x)
+    # outputs = predictions
+    # model = Model(inputs=inputs, outputs=outputs, name='inception_v3')
+
     return base_model, model
 
 def valid(args, classes, base_model, model):
     pass
 
 def infer(args, classes, base_model, model):
-    pass
+    infer_generator = data_utils.iter_mini_batches(args, 'testing',classes, batch_size=args.batch_size, shuffle=True)
+
+    count = [0,0]
+    for batch, (image_batch, label_batch) in enumerate(infer_generator):
+        if batch >=1000: break
+        output_batch = model.predict(image_batch)
+        print(output_batch.shape)
+        ys_true = np.argmax(label_batch, axis=1)
+        ys_pred = np.argmax(output_batch, axis=1)
+        for i in range(label_batch.shape[0]):
+            flag = 1 if ys_true[i] == ys_pred[i] else 0
+            count[flag] += 1
+            print('y_true: %d, y_pred: %d, flag: %d'%(ys_true[i], ys_pred[i], flag))
+    print(count)
 
 def train(args, classes, base_model, model):
     save_model_path = os.path.join(args.logdir, "trained_models")
@@ -70,8 +93,8 @@ def train(args, classes, base_model, model):
     tensorboard = TensorBoard(log_dir=os.path.join(args.logdir, "tf_logs"), write_images=True)
 
     # train on generator 
-    train_generator = data_utils.iter_mini_batches(args, 'training', len(classes), batch_size=args.batch_size)
-    valid_generator = data_utils.iter_mini_batches(args, 'validation', len(classes), batch_size=args.batch_size)
+    train_generator = data_utils.iter_mini_batches(args, 'training', classes, batch_size=args.batch_size)
+    valid_generator = data_utils.iter_mini_batches(args, 'validation', classes, batch_size=args.batch_size)
 
     # step 01 
     for i, layer in enumerate(base_model.layers):
@@ -114,8 +137,8 @@ def main(args):
     
     if args.mode == 'train': 
         train(args, classes, base_model, model)
-    elif args.mode == 'infer': 
-        pass 
+    elif args.mode == 'infer':
+        infer(args, classes, base_model, model)
     else: 
         raise ValueError('--mode [train | infer]')
 

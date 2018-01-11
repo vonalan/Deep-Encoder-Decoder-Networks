@@ -28,7 +28,7 @@ import data_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
-parser.add_argument('--device', default='gpu', type=str)
+parser.add_argument('--device', default='cpu', type=str)
 parser.add_argument('--base_model', default='inception_v3', type=str)
 parser.add_argument('--input_shape', default=(299,299,3), type=tuple)
 parser.add_argument('--classes_path', default='../data/hmdb51_classes.txt', type=str)
@@ -37,11 +37,13 @@ parser.add_argument('--split_round', default='1', type=str)
 parser.add_argument('--video_dir', default='../hmdb51_org/', type=str)
 parser.add_argument('--image_dir', default='../hmdb51_org_images/', type=str)
 parser.add_argument('--init_weights_path', default=None, type=str)
-parser.add_argument('--logdir', default='../temp/', type=str)
-parser.add_argument('--batch_size', default=10, type=int)
+parser.add_argument('--logdir', default='../temp_for_attention/', type=str)
+# parser.add_argument('--batch_size', default=10, type=int) # inception
 parser.add_argument('--epoches', default=1000, type=int)
 parser.add_argument('--train_steps', default=2000, type=int)
 parser.add_argument('--val_steps', default=500, type=int)
+
+parser.add_argument('--batch_size', default=1, type=int)
 args, _ = parser.parse_known_args()
 
 def build(classes):
@@ -107,8 +109,11 @@ def train_test_keras(args, classes, base_model, model):
         print('\n')
 
 def infer(args, classes, base_model, model):
-    pass
-
+    infer_generator = data_utils.iter_mini_batches_for_attention(args, base_model, 'training', classes, batch_size=args.batch_size)
+    for feat_batch, label_batch in infer_generator:
+        print(feat_batch.min(), feat_batch.max(), feat_batch.mean())
+        print(np.argmax(label_batch, axis=1), np.argmax(model.predict(feat_batch), axis=1))
+        print('\n')
 
 def train(args, classes, base_model, model):
     save_model_path = os.path.join(args.logdir, "trained_models")
@@ -123,38 +128,38 @@ def train(args, classes, base_model, model):
     tensorboard = TensorBoard(log_dir=os.path.join(args.logdir, "tf_logs"), write_images=True)
 
     # train on generator 
-    train_generator = data_utils.iter_mini_batches(args, 'training', len(classes), batch_size=args.batch_size)
-    valid_generator = data_utils.iter_mini_batches(args, 'validation', len(classes), batch_size=args.batch_size)
+    train_generator = data_utils.iter_mini_batches_for_attention(args, base_model, 'training', classes, batch_size=args.batch_size)
+    valid_generator = data_utils.iter_mini_batches_for_attention(args, base_model, 'validation', classes, batch_size=args.batch_size)
 
-    # step 01
-    base_model.trainable = False
-    model.summary()
-    model.compile(optimizer=RMSprop(lr=0.001), loss=categorical_crossentropy, metrics=[categorical_accuracy])
-    model.fit_generator(generator=train_generator,
-                              steps_per_epoch=args.train_steps,
-                              epochs=args.epoches,
-                              validation_data=valid_generator,
-                              validation_steps=args.val_steps,
-                              max_q_size=100, # 100
-                              workers=1, # num_gpus/num_cpus
-                            #   pickle_safe=True,
-                              callbacks=[csv_logger, checkpointer, tensorboard]
-                              )
-
-    # step 02
-    base_model.trainable = True
-    model.summary()
-    model.compile(optimizer=SGD(lr=1e-4, momentum=9e-1), loss=categorical_crossentropy, metrics=[categorical_accuracy])
-    model.fit_generator(generator=train_generator,
-                              steps_per_epoch=args.train_steps,
-                              epochs=args.epoches,
-                              validation_data=valid_generator,
-                              validation_steps=args.val_steps,
-                              max_q_size=100, # 100
-                              workers=1, # num_gpus/num_cpus
-                            #   pickle_safe=True,
-                              callbacks=[csv_logger, checkpointer, tensorboard]
-                              )
+    # # step 01
+    # # base_model.trainable = False
+    # model.summary()
+    # model.compile(optimizer=RMSprop(lr=0.001), loss=categorical_crossentropy, metrics=[categorical_accuracy])
+    # model.fit_generator(generator=train_generator,
+    #                           steps_per_epoch=args.train_steps,
+    #                           epochs=args.epoches,
+    #                           validation_data=valid_generator,
+    #                           validation_steps=args.val_steps,
+    #                           max_q_size=100, # 100
+    #                           workers=1, # num_gpus/num_cpus
+    #                         #   pickle_safe=True,
+    #                           callbacks=[csv_logger, checkpointer, tensorboard]
+    #                           )
+    #
+    # # step 02
+    # # base_model.trainable = True
+    # model.summary()
+    # model.compile(optimizer=SGD(lr=1e-4, momentum=9e-1), loss=categorical_crossentropy, metrics=[categorical_accuracy])
+    # model.fit_generator(generator=train_generator,
+    #                           steps_per_epoch=args.train_steps,
+    #                           epochs=args.epoches,
+    #                           validation_data=valid_generator,
+    #                           validation_steps=args.val_steps,
+    #                           max_q_size=100, # 100
+    #                           workers=1, # num_gpus/num_cpus
+    #                         #   pickle_safe=True,
+    #                           callbacks=[csv_logger, checkpointer, tensorboard]
+    #                           )
 
 def main(args):
     classes = data_utils.get_classes(args.classes_path)
@@ -164,14 +169,12 @@ def main(args):
     if args.init_weights_path is not None:
         model.load_weights(args.init_weights_path, by_name=True)
     
-    # if args.mode == 'train':
-    #     train(args, classes, base_model, model)
-    # elif args.mode == 'infer':
-    #     pass
-    # else:
-    #     raise ValueError('--mode [train | infer]')
-
-    train_test_keras(args, classes, base_model, model)
+    if args.mode == 'train':
+        train(args, classes, base_model, model)
+    elif args.mode == 'infer':
+        pass
+    else:
+        raise ValueError('--mode [train | infer]')
 
 if __name__ == '__main__':
     assert  args.device == 'cpu'
