@@ -1,34 +1,7 @@
-# 0 input_1 False
-# 1 dense_1 False
-# 2 reshape_1 False
-# 3 fc_8 False
-# 4 deconv5_3 False
-# 5 deconv5_2 False
-# 6 deconv5_1 False
-# 7 deconv4_3 False
-# 8 deconv4_2 False
-# 9 deconv4_1 False
-# 10 deconv3_3 False
-# 11 deconv3_2 False
-# 12 deconv3_1 False
-# 13 deconv2_2 False
-# 14 deconv2_1 False
-# 15 deconv1_2 False
-# 16 deconv1_1 False
-# 17 conv1_1 True
-# 18 conv1_2 True
-# 19 conv2_1 True
-# 20 conv2_2 True
-# 21 conv3_1 True
-# 22 conv3_2 True
-# 23 conv3_3 True
-# 24 conv4_1 True
-# 25 conv4_2 True
-# 26 conv4_3 True
-# 27 conv5_1 True
-# 28 conv5_2 True
-# 29 conv5_3 True
-# 30 fc_6 True
-# 31 flatten_2 True
-# 32 dense_4 True
-# 33 dense_5 True
+import numpy as np
+
+frames_stas = np.loadtxt('../data/hmdb51_frames_stats.txt')
+hist = np.histogram(frames_stas, bins=int(frames_stas.max()), range=(0, frames_stas.max()))
+np.savetxt('../data/hmdb51_frames_dist.txt', hist[0], fmt='%d')
+
+print(frames_stas.min(), frames_stas.max(), frames_stas.mean(), frames_stas.std())

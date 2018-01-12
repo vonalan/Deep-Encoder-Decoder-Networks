@@ -147,7 +147,11 @@ def iter_mini_batches_for_attention(args, model, category, classes, batch_size=1
             for idx in range(num_cur_batch):
                 video_path = video_list[sidx + idx][0]
                 image_dir = video_path.replace('hmdb51_org', 'hmdb51_org_images')
-                images = [cv2.resize(cv2.imread(os.path.join(image_dir, image)), args.input_shape[:2]) for image in os.listdir(image_dir)]
+                # TODO: temporal relevant???
+                images_list = os.listdir(image_dir)
+                images_list = sorted(images_list, key=lambda x: int(x.split('.')[0]), reverse=False)
+                images_list = [os.path.join(image_dir, image_name) for image_name in images_list]
+                images = [cv2.resize(cv2.imread(image_name), args.input_shape[:2]) for image_name in images_list]
                 feats_batch = model.predict(np.array(images))
                 label = [0] * 51
                 label[video_list[sidx + idx][1]] = 1
@@ -160,7 +164,7 @@ def iter_mini_batches_for_attention(args, model, category, classes, batch_size=1
         if not infinite:
             break
 
-def iter_mini_batches(args, category, classes, batch_size=4, shuffle=True):
+def iter_mini_batches(args, category, classes, batch_size=4, shuffle=True, infinite=True):
     '''
     data generator for classification problems.
     :param args:
@@ -191,8 +195,10 @@ def iter_mini_batches(args, category, classes, batch_size=4, shuffle=True):
                 label_batch[idx][image_list[sidx + idx][1]] = 1
                 # print(image_batch[idx].shape, label_batch[idx])
             yield image_batch, label_batch
+        if not infinite:
+            break
 
-def iter_mini_batches_for_deconvnet(args, category, classes, batch_size=4, shuffle=True):
+def iter_mini_batches_for_deconvnet(args, category, classes, batch_size=4, shuffle=True, infinite=True):
     '''
     data generator for deconvet and dcgan.
     :param args:
@@ -223,6 +229,8 @@ def iter_mini_batches_for_deconvnet(args, category, classes, batch_size=4, shuff
                 label_batch[idx][image_list[sidx + idx][1]] = 1
                 # print(image_batch[idx].shape, label_batch[idx])
             yield image_batch, image_batch
+        if not infinite:
+            break
 
 if __name__ == "__main__":
     pass

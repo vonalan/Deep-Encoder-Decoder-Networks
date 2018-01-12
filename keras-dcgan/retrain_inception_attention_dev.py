@@ -144,7 +144,7 @@ def train_test_keras(args, classes, base_model, model):
 
 
 def infer(args, classes, base_model, model):
-    infer_generator = data_utils.iter_mini_batches_for_attention(args, base_model, 'training', classes,
+    infer_generator = data_utils.iter_mini_batches_for_attention(args, base_model, 'testing', classes,
                                                                  batch_size=args.batch_size)
     for feat_batch, label_batch in infer_generator:
         print(feat_batch.min(), feat_batch.max(), feat_batch.mean())
@@ -167,9 +167,7 @@ def train(args, classes, base_model, model):
 
         # # TODO: tensorboard
         # # TODO: moving average
-        train_loss = 0.0
-        train_acc = 0.0
-        train_count = 0
+        train_loss, train_acc, train_count = 0.0, 0.0, 0.0
         for batch, (feat_batch, label_batch) in enumerate(train_generator):
             loss, acc = model.train_on_batch(feat_batch, label_batch)
             train_acc = train_acc * train_count + acc * feat_batch.shape[0]
@@ -179,9 +177,7 @@ def train(args, classes, base_model, model):
             train_acc = train_acc / train_count
             print('epoch_%4d--batch_%4d--trainloss_%.5f--trainacc_%.5f_trainloss_%.5f--trainacc_%.5f'%(epoch+1, batch+1, loss, acc, train_loss, train_acc))
 
-        valid_loss = 0.0
-        valid_acc = 0.0
-        valid_count = 0
+        valid_loss, valid_acc, valid_count = 0.0, 0.0, 0.0
         for batch, (feat_batch, label_batch) in enumerate(valid_generator):
             loss, acc = model.test_on_batch(feat_batch, label_batch)
             valid_acc = valid_acc * valid_count + acc * feat_batch.shape[0]

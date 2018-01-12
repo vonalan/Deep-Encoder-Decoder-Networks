@@ -17,6 +17,7 @@ from keras.callbacks import ModelCheckpoint, CSVLogger, LearningRateScheduler, T
 # from keras.applications.vgg19 import VGG19
 # from keras.applications.resnet50 import ResNet50
 from keras.applications.inception_v3 import InceptionV3
+
 # from keras.applications.inception_resnet_v2 import InceptionResNetV2
 # from keras.applications.xception import Xception
 
@@ -24,7 +25,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)
 parser.add_argument('--device', default='gpu', type=str)
 parser.add_argument('--base_model', default='vgg16', type=str)
-parser.add_argument('--input_shape', default=(224,224,3), type=tuple)
+parser.add_argument('--input_shape', default=(224, 224, 3), type=tuple)
 parser.add_argument('--classes_path', default='../data/hmdb51_classes.txt', type=str)
 parser.add_argument('--split_dir', default='../testTrainMulti_7030_splits/')
 parser.add_argument('--split_round', default='1', type=str)
@@ -45,7 +46,9 @@ args, _ = parser.parse_known_args()
 '''retrain deconvnet by hmdb51'''
 import deconvnet
 import data_utils
+
 ''''''
+
 
 def build(classes):
     base_model = None
@@ -54,18 +57,22 @@ def build(classes):
         print(i, layer.name)
     return base_model, model
 
+
 def valid(args, classes, base_model, model):
     pass
 
+
 def infer(args, classes, base_model, model):
-    infer_generator = data_utils.iter_mini_batches_for_deconvnet(args, 'testing', len(classes), batch_size=args.batch_size)
-    for batch, (raw_image_batch, _)  in enumerate(infer_generator):
+    infer_generator = data_utils.iter_mini_batches_for_deconvnet(args, 'testing', classes,
+                                                                 batch_size=args.batch_size)
+    for batch, (raw_image_batch, _) in enumerate(infer_generator):
         if batch > 0: break
 
         pred_image_batch = model.predict(raw_image_batch)
         comp_image_batch = np.concatenate((raw_image_batch, pred_image_batch), axis=2).astype(np.uint8)
         for i in range(comp_image_batch.shape[0]):
-            cv2.imwrite('../temp_for_deconvnet/outputs/pred_%d.jpg'%(i), comp_image_batch[i,...])
+            cv2.imwrite('../temp_for_deconvnet/outputs/pred_%d.jpg' % (i), comp_image_batch[i, ...])
+
 
 def train(args, classes, base_model, model):
     save_model_path = os.path.join(args.logdir, "trained_models")
@@ -80,54 +87,62 @@ def train(args, classes, base_model, model):
     tensorboard = TensorBoard(log_dir=os.path.join(args.logdir, "tf_logs"), write_images=True)
 
     # train on generator 
-    train_generator = data_utils.iter_mini_batches_for_deconvnet(args, 'training', len(classes), batch_size=args.batch_size)
-    valid_generator = data_utils.iter_mini_batches_for_deconvnet(args, 'validation', len(classes), batch_size=args.batch_size)
+    train_generator = data_utils.iter_mini_batches_for_deconvnet(args, 'training', classes,
+                                                                 batch_size=args.batch_size)
+    valid_generator = data_utils.iter_mini_batches_for_deconvnet(args, 'validation', classes,
+                                                                 batch_size=args.batch_size)
 
-    # # step 01
-    # # for i, layer in enumerate(base_model.layers):
-    # #     layer.trainable = False
-    # model.compile(optimizer=SGD(lr=1e-4, momentum=9e-1, decay=1e-6), loss=categorical_crossentropy, metrics=[categorical_accuracy])
-    # model.fit_generator(generator=train_generator,
-    #                           steps_per_epoch=args.train_steps,
-    #                           epochs=args.epoches,
-    #                           validation_data=valid_generator,
-    #                           validation_steps=args.val_steps,
-    #                           max_q_size=100, # 100
-    #                           workers=1, # num_gpus/num_cpus
-    #                           # pickle_safe=True,
-    #                           callbacks=[csv_logger, checkpointer, tensorboard]
-    #                           )
+    # step 01
+    # for i, layer in enumerate(base_model.layers):
+    #     layer.trainable = False
+    model.compile(optimizer=SGD(lr=1e-4, momentum=9e-1, decay=1e-6), loss=mean_squared_logarithmic_error,
+                  metrics=[mean_squared_error])
+    model.fit_generator(generator=train_generator,
+                        steps_per_epoch=args.train_steps,
+                        epochs=args.epoches,
+                        validation_data=valid_generator,
+                        validation_steps=args.val_steps,
+                        max_q_size=100,  # 100
+                        workers=1,  # num_gpus/num_cpus
+                        # pickle_safe=True,
+                        callbacks=[csv_logger, checkpointer, tensorboard],
+                        initial_epoch=0
+                        )
 
     # step 02
     # for i, layer in enumerate(base_model.layers):
     #     layer.trainable=True
-    model.compile(optimizer=SGD(lr=1e-5, momentum=9e-1, decay=1e-6), loss=mean_squared_logarithmic_error, metrics=[mean_squared_error])
+    model.compile(optimizer=SGD(lr=1e-5, momentum=9e-1, decay=1e-6), loss=mean_squared_logarithmic_error,
+                  metrics=[mean_squared_error])
     model.fit_generator(generator=train_generator,
-                              steps_per_epoch=args.train_steps,
-                              epochs=args.epoches,
-                              validation_data=valid_generator,
-                              validation_steps=args.val_steps,
-                              max_q_size=100, # 100
-                              workers=1, # num_gpus/num_cpus
-                              # pickle_safe=True,
-                              callbacks=[csv_logger, checkpointer, tensorboard]
-                              )
+                        steps_per_epoch=args.train_steps,
+                        epochs=args.epoches,
+                        validation_data=valid_generator,
+                        validation_steps=args.val_steps,
+                        max_q_size=100,  # 100
+                        workers=1,  # num_gpus/num_cpus
+                        # pickle_safe=True,
+                        callbacks=[csv_logger, checkpointer, tensorboard],
+                        initial_epoch=0
+                        )
+
 
 def main(args):
     classes = data_utils.get_classes(args.classes_path)
     base_model, model = build(classes)
-    
-    if args.init_weights_path is not None: 
+
+    if args.init_weights_path is not None:
         model.load_weights(args.init_weights_path, by_name=True)
-    
-    if args.mode == 'train': 
+
+    if args.mode == 'train':
         train(args, classes, base_model, model)
     elif args.mode == 'infer':
         infer(args, classes, base_model, model)
-    else: 
+    else:
         raise ValueError('--mode [train | infer]')
 
-if __name__ == '__main__': 
+
+if __name__ == '__main__':
     if args.device == 'cpu':
         with tf.device('/cpu:0'):
             main(args)
