@@ -181,7 +181,7 @@ def train(args, classes, base_model, model):
         for batch, (feat_batch, label_batch) in enumerate(valid_generator):
             loss, acc = model.test_on_batch(feat_batch, label_batch)
             valid_acc = valid_acc * valid_count + acc * feat_batch.shape[0]
-            valid_loss = valid_loss * valid_loss + loss * feat_batch.shape[0]
+            valid_loss = valid_loss * valid_count + loss * feat_batch.shape[0]
             valid_count = valid_count + feat_batch.shape[0]
             valid_loss = valid_loss / valid_count
             valid_acc = valid_acc / valid_count
